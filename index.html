@@ -1,0 +1,1933 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#f4f7fb">
+  <title>Absensi Siswa — SD Negeri Klumprit 04 Nusawungu</title>
+  <meta name="description" content="Dashboard pencatatan kehadiran siswa SD Negeri Klumprit 04 Nusawungu dengan verifikasi petugas.">
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['DM Sans', 'sans-serif'],
+            display: ['Manrope', 'sans-serif']
+          },
+          colors: {
+            ink: '#172033',
+            canvas: '#f4f7fb',
+            brand: '#5267e8'
+          },
+          boxShadow: {
+            soft: '0 18px 55px rgba(24, 39, 75, .07)'
+          }
+        }
+      }
+    }
+  </script>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Library browser-side sesuai petunjuk implementasi. Model dimuat dari CDN di bawah. -->
+  <script src="https://cdn.jsdelivr.net/npm/@vladmandic/face-api@1.7.15/dist/face-api.js" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.2" crossorigin="anonymous"></script>
+
+  <style>
+    :root { color-scheme: light; }
+    html { scroll-behavior: smooth; }
+    body { font-family: 'DM Sans', sans-serif; background: #f4f7fb; }
+    h1, h2, h3, .font-display { font-family: 'Manrope', sans-serif; }
+    button, input, select { font: inherit; }
+    button:disabled { cursor: not-allowed; opacity: .55; }
+    .tab-button { border: 1px solid transparent; transition: color .18s ease, background .18s ease, box-shadow .18s ease; }
+    .tab-button[aria-selected="true"] { color: #3349c9; background: #eef1ff; border-color: #e1e6ff; box-shadow: 0 2px 5px rgba(45, 65, 165, .05); }
+    .status-pill { display: inline-flex; align-items: center; gap: .48rem; white-space: nowrap; border-radius: 999px; padding: .43rem .72rem; font-size: .72rem; font-weight: 700; }
+    .status-pill[data-state="online"] { color: #087b58; background: #e8fbf3; }
+    .status-pill[data-state="loading"] { color: #8b5b08; background: #fff6de; }
+    .status-pill[data-state="error"] { color: #b33d4c; background: #fff0f1; }
+    .status-pill[data-state="idle"] { color: #657085; background: #edf0f5; }
+    .status-dot { width: .43rem; height: .43rem; border-radius: 999px; background: currentColor; }
+    [data-state="loading"] .status-dot { animation: pulse 1.2s infinite; }
+    .camera-stage { position: relative; aspect-ratio: 16 / 9; min-height: 245px; max-height: 590px; background: #090f1c; }
+    .camera-stage video, .camera-stage canvas { display: block; }
+    .camera-stage video[hidden], .camera-stage canvas[hidden] { display: none; }
+    .camera-stage canvas { width: 100%; height: 100%; }
+    .soft-scroll::-webkit-scrollbar { width: 7px; height: 7px; }
+    .soft-scroll::-webkit-scrollbar-thumb { background: #d6dce8; border-radius: 99px; }
+    .soft-scroll::-webkit-scrollbar-track { background: transparent; }
+    .toast-enter { animation: toast-in .24s ease-out both; }
+    @keyframes pulse { 50% { opacity: .38; } }
+    @keyframes toast-in { from { opacity: 0; transform: translateY(10px) scale(.98); } to { opacity: 1; transform: translateY(0) scale(1); } }
+    @media (max-width: 639px) {
+      .camera-stage { min-height: 210px; }
+    }
+  </style>
+</head>
+<body class="min-h-screen text-ink antialiased">
+  <div class="pointer-events-none fixed inset-0 -z-10 overflow-hidden" aria-hidden="true">
+    <div class="absolute -right-24 -top-40 h-[28rem] w-[28rem] rounded-full bg-indigo-100/55 blur-3xl"></div>
+    <div class="absolute -left-40 top-[38rem] h-[26rem] w-[26rem] rounded-full bg-cyan-100/40 blur-3xl"></div>
+  </div>
+
+  <header class="border-b border-slate-200/75 bg-white/85 backdrop-blur-xl">
+    <div class="mx-auto flex max-w-[1480px] flex-col gap-4 px-4 py-4 sm:px-6 lg:flex-row lg:items-center lg:justify-between lg:px-8">
+      <div class="flex items-center gap-3.5">
+        <div class="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-indigo-500 to-blue-600 text-white shadow-lg shadow-indigo-200/70">
+          <i class="fa-solid fa-camera-retro text-lg" aria-hidden="true"></i>
+        </div>
+        <div>
+          <div class="flex items-center gap-2">
+            <p class="font-display text-[15px] font-extrabold tracking-tight text-slate-900">SD Negeri Klumprit 04 Nusawungu</p>
+            <span class="rounded-full bg-indigo-50 px-2 py-0.5 text-[9px] font-extrabold uppercase tracking-[.13em] text-indigo-600">Smart attendance</span>
+          </div>
+          <p class="mt-0.5 text-xs text-slate-500">Sistem Absensi Wajah Siswa Realtime</p>
+        </div>
+      </div>
+
+      <div class="flex flex-wrap items-center gap-2 sm:gap-2.5">
+        <div class="hidden items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-600 sm:flex">
+          <i class="fa-regular fa-calendar text-indigo-500" aria-hidden="true"></i>
+          <span id="header-date">Memuat tanggal…</span>
+        </div>
+        <span id="staff-status" class="status-pill" data-state="idle" role="status" title="Status akun petugas sekolah">
+          <span class="status-dot" aria-hidden="true"></span><span id="staff-label">Belum masuk</span>
+        </span>
+        <span id="connection-status" class="status-pill" data-state="idle" role="status">
+          <span class="status-dot" aria-hidden="true"></span><span id="connection-label">Belum dikonfigurasi</span>
+        </span>
+        <span id="model-status" class="status-pill" data-state="loading" role="status">
+          <span class="status-dot" aria-hidden="true"></span><span id="model-label">Memuat model…</span>
+        </span>
+      </div>
+    </div>
+  </header>
+
+  <main class="mx-auto max-w-[1480px] px-4 pb-12 pt-7 sm:px-6 lg:px-8 lg:pt-9">
+    <div class="mb-7 flex flex-col gap-5 xl:flex-row xl:items-end xl:justify-between">
+      <div>
+        <p class="mb-2 flex items-center gap-2 text-[11px] font-extrabold uppercase tracking-[.2em] text-indigo-600">
+          <span class="h-1.5 w-1.5 rounded-full bg-indigo-500"></span> Panel administrasi kelas
+        </p>
+        <h1 class="font-display text-3xl font-extrabold tracking-[-.045em] text-slate-900 sm:text-[2.35rem]">Presensi berbantuan wajah.</h1>
+        <p class="mt-2 max-w-2xl text-sm leading-6 text-slate-500">SD Negeri Klumprit 04 Nusawungu · wajah hanya memberi saran, petugas tetap mengonfirmasi kehadiran.</p>
+      </div>
+      <nav class="flex max-w-full gap-1 overflow-x-auto rounded-2xl border border-slate-200/80 bg-white p-1.5 shadow-sm" aria-label="Navigasi aplikasi">
+        <button type="button" class="tab-button flex shrink-0 items-center gap-2 rounded-xl px-3.5 py-2.5 text-xs font-bold text-slate-500 sm:px-4" data-tab="attendance" aria-selected="true">
+          <i class="fa-solid fa-expand text-[11px]" aria-hidden="true"></i><span>Monitor presensi</span>
+        </button>
+        <button type="button" class="tab-button flex shrink-0 items-center gap-2 rounded-xl px-3.5 py-2.5 text-xs font-bold text-slate-500 sm:px-4" data-tab="enrollment" aria-selected="false">
+          <i class="fa-solid fa-user-plus text-[11px]" aria-hidden="true"></i><span>Daftarkan siswa</span>
+        </button>
+        <button type="button" class="tab-button flex shrink-0 items-center gap-2 rounded-xl px-3.5 py-2.5 text-xs font-bold text-slate-500 sm:px-4" data-tab="settings" aria-selected="false">
+          <i class="fa-solid fa-sliders text-[11px]" aria-hidden="true"></i><span>Konfigurasi</span>
+        </button>
+      </nav>
+    </div>
+
+    <!-- TAB 1: MONITOR PRESENSI -->
+    <section data-panel="attendance" aria-labelledby="attendance-heading">
+      <div class="mb-5 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <p class="text-xs font-bold uppercase tracking-[.14em] text-slate-400">Pemantauan langsung</p>
+          <h2 id="attendance-heading" class="mt-1 font-display text-xl font-extrabold tracking-tight text-slate-900">Monitor kelas</h2>
+        </div>
+        <div class="flex flex-wrap items-end gap-2.5">
+          <label class="block">
+            <span class="mb-1.5 block text-[10px] font-extrabold uppercase tracking-[.12em] text-slate-400">Tampilkan kelas</span>
+            <select id="class-filter" class="min-w-40 rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm font-semibold text-slate-700 outline-none transition focus:border-indigo-400 focus:ring-4 focus:ring-indigo-100">
+              <option value="__all__">Semua kelas</option>
+            </select>
+          </label>
+          <button id="refresh-data" type="button" class="flex h-[42px] items-center gap-2 rounded-xl border border-slate-200 bg-white px-3.5 text-xs font-bold text-slate-600 shadow-sm transition hover:border-indigo-200 hover:text-indigo-700" title="Muat ulang data dari Supabase">
+            <i class="fa-solid fa-rotate-right" aria-hidden="true"></i><span class="hidden sm:inline">Muat ulang</span>
+          </button>
+        </div>
+      </div>
+
+      <div class="grid items-start gap-5 xl:grid-cols-[1.04fr_.96fr]">
+        <!-- Area kamera -->
+        <article class="overflow-hidden rounded-[26px] border border-slate-200/80 bg-white p-4 shadow-soft sm:p-5">
+          <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
+            <div class="flex items-center gap-3">
+              <div class="flex h-10 w-10 items-center justify-center rounded-xl bg-slate-900 text-emerald-300">
+                <i class="fa-solid fa-video" aria-hidden="true"></i>
+              </div>
+              <div>
+                <h3 class="font-display text-sm font-extrabold text-slate-900">Kamera presensi</h3>
+                <p id="camera-status" class="mt-0.5 text-[11px] font-medium text-slate-500">Kamera belum aktif</p>
+              </div>
+            </div>
+            <span id="scan-indicator" class="hidden items-center gap-2 rounded-full bg-emerald-50 px-2.5 py-1.5 text-[10px] font-extrabold text-emerald-700">
+              <span class="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-500"></span> PEMINDAIAN AKTIF
+            </span>
+          </div>
+
+          <div id="camera-stage" class="camera-stage overflow-hidden rounded-[21px] border border-slate-800">
+            <video id="attendance-video" class="absolute inset-0 h-full w-full object-fill" autoplay muted playsinline hidden aria-label="Tampilan webcam untuk presensi"></video>
+            <canvas id="face-overlay" class="absolute inset-0 pointer-events-none" hidden aria-hidden="true"></canvas>
+            <div id="camera-placeholder" class="absolute inset-0 flex flex-col items-center justify-center bg-[radial-gradient(ellipse_at_50%_42%,#1d2b43_0%,#111827_50%,#090f1c_100%)] px-6 text-center">
+              <div class="mb-4 flex h-[68px] w-[68px] items-center justify-center rounded-[22px] border border-white/10 bg-white/[.06] text-2xl text-slate-400 shadow-inner">
+                <i class="fa-solid fa-camera" aria-hidden="true"></i>
+              </div>
+              <p class="font-display text-sm font-bold text-white">Siap untuk memindai</p>
+              <p class="mt-1.5 max-w-xs text-xs leading-5 text-slate-400">Aktifkan kamera setelah model wajah dan data siswa siap.</p>
+            </div>
+            <div class="absolute left-3 top-3 flex items-center gap-2 rounded-full border border-white/10 bg-slate-950/65 px-2.5 py-1.5 text-[10px] font-bold text-white/85 backdrop-blur">
+              <i class="fa-solid fa-crosshairs text-emerald-300" aria-hidden="true"></i><span id="scan-state-label">Menunggu kamera</span>
+            </div>
+            <div id="match-notice" class="absolute bottom-3 left-3 right-3 hidden rounded-2xl border border-emerald-300/30 bg-emerald-950/90 p-3 text-white shadow-2xl backdrop-blur-md" aria-live="polite">
+              <div class="flex items-center gap-3">
+                <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-emerald-400 text-emerald-950"><i class="fa-solid fa-check" aria-hidden="true"></i></span>
+                <div class="min-w-0 flex-1">
+                  <p id="match-name" class="truncate text-sm font-extrabold">Siswa dikenali</p>
+                  <p id="match-detail" class="mt-0.5 text-[11px] font-medium text-emerald-100/80">Periksa identitas sebelum mencatat presensi.</p>
+                </div>
+                <div id="candidate-actions" class="hidden shrink-0 items-center gap-1.5">
+                  <button id="confirm-attendance" type="button" class="rounded-lg bg-emerald-300 px-2.5 py-2 text-[10px] font-extrabold text-emerald-950 transition hover:bg-emerald-200">Konfirmasi hadir</button>
+                  <button id="dismiss-candidate" type="button" class="flex h-8 w-8 items-center justify-center rounded-lg text-white/70 transition hover:bg-white/10 hover:text-white" aria-label="Tolak kandidat wajah"><i class="fa-solid fa-xmark" aria-hidden="true"></i></button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="mt-4 grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end">
+            <label class="min-w-0">
+              <span class="mb-1.5 block text-[10px] font-extrabold uppercase tracking-[.12em] text-slate-400">Pilih perangkat kamera</span>
+              <span class="flex gap-2">
+                <select id="camera-select" class="min-w-0 flex-1 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-xs font-semibold text-slate-700 outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-100">
+                  <option value="">Kamera default</option>
+                </select>
+                <button id="refresh-cameras" type="button" class="flex h-[38px] w-[40px] shrink-0 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-500 transition hover:border-indigo-200 hover:text-indigo-600" aria-label="Perbarui daftar kamera" title="Perbarui daftar kamera">
+                  <i class="fa-solid fa-rotate" aria-hidden="true"></i>
+                </button>
+              </span>
+            </label>
+            <div class="flex gap-2">
+              <button id="start-camera" type="button" class="flex flex-1 items-center justify-center gap-2 rounded-xl bg-indigo-600 px-4 py-2.5 text-xs font-extrabold text-white shadow-lg shadow-indigo-200 transition hover:bg-indigo-700 disabled:cursor-not-allowed disabled:bg-slate-300 disabled:shadow-none sm:flex-none">
+                <i class="fa-solid fa-play text-[10px]" aria-hidden="true"></i> Mulai kamera
+              </button>
+              <button id="stop-camera" type="button" class="flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-xs font-bold text-slate-600 transition hover:border-rose-200 hover:text-rose-600" disabled>
+                <i class="fa-solid fa-stop text-[10px]" aria-hidden="true"></i><span class="hidden sm:inline">Stop</span>
+              </button>
+            </div>
+          </div>
+          <div class="mt-3 flex items-start gap-2 rounded-xl bg-slate-50 px-3 py-2.5 text-[11px] leading-5 text-slate-500">
+            <i class="fa-solid fa-circle-info mt-0.5 text-indigo-400" aria-hidden="true"></i>
+            <p id="camera-hint">Masuk sebagai petugas sekolah. Wajah hanya menampilkan kandidat—tidak ada liveness, sehingga foto/layar bisa menipu. Petugas wajib memeriksa langsung dan mengonfirmasi.</p>
+          </div>
+        </article>
+
+        <!-- Log kehadiran -->
+        <article class="overflow-hidden rounded-[26px] border border-slate-200/80 bg-white shadow-soft">
+          <div class="p-4 pb-3 sm:p-5 sm:pb-4">
+            <div class="flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <div class="flex items-center gap-2 text-[10px] font-extrabold uppercase tracking-[.15em] text-slate-400">
+                  <i class="fa-regular fa-calendar-check text-indigo-500" aria-hidden="true"></i><span id="today-date">Hari ini</span>
+                </div>
+                <h3 class="mt-1.5 font-display text-lg font-extrabold tracking-tight text-slate-900">Rekap kehadiran</h3>
+                <p id="class-summary" class="mt-0.5 text-xs text-slate-500">Semua kelas · seluruh siswa</p>
+              </div>
+              <span id="realtime-status" class="status-pill" data-state="idle" role="status" title="Status listener Supabase Realtime">
+                <span class="status-dot" aria-hidden="true"></span><span id="realtime-label">Realtime menunggu</span>
+              </span>
+            </div>
+
+            <div class="mt-4 grid grid-cols-2 gap-3">
+              <div class="rounded-2xl border border-emerald-100 bg-emerald-50/70 p-3.5 sm:p-4">
+                <div class="flex items-center justify-between gap-2">
+                  <p class="text-[10px] font-extrabold uppercase tracking-[.13em] text-emerald-800/70">Hadir</p>
+                  <span class="flex h-7 w-7 items-center justify-center rounded-lg bg-white/80 text-emerald-600"><i class="fa-solid fa-check text-[11px]" aria-hidden="true"></i></span>
+                </div>
+                <p class="mt-1 font-display text-2xl font-extrabold tracking-tight text-emerald-800"><span id="present-count">0</span><span class="ml-1 text-xs font-bold text-emerald-700/60">siswa</span></p>
+              </div>
+              <div class="rounded-2xl border border-slate-200 bg-slate-50 p-3.5 sm:p-4">
+                <div class="flex items-center justify-between gap-2">
+                  <p class="text-[10px] font-extrabold uppercase tracking-[.13em] text-slate-500">Belum hadir</p>
+                  <span class="flex h-7 w-7 items-center justify-center rounded-lg bg-white text-slate-500"><i class="fa-regular fa-clock text-[11px]" aria-hidden="true"></i></span>
+                </div>
+                <p class="mt-1 font-display text-2xl font-extrabold tracking-tight text-slate-700"><span id="absent-count">0</span><span class="ml-1 text-xs font-bold text-slate-400">siswa</span></p>
+              </div>
+            </div>
+          </div>
+
+          <div class="border-t border-slate-100">
+            <div class="soft-scroll max-h-[455px] overflow-auto">
+              <table class="w-full min-w-[570px] border-collapse text-left">
+                <thead class="sticky top-0 z-10 bg-slate-50/95 backdrop-blur">
+                  <tr class="border-b border-slate-100 text-[9px] font-extrabold uppercase tracking-[.13em] text-slate-400">
+                    <th scope="col" class="px-4 py-3 pl-5 sm:pl-5">Siswa</th>
+                    <th scope="col" class="px-3 py-3">Kelas</th>
+                    <th scope="col" class="px-3 py-3">Jam hadir</th>
+                    <th scope="col" class="px-3 py-3 pr-5">Status</th>
+                  </tr>
+                </thead>
+                <tbody id="attendance-rows" class="divide-y divide-slate-100"></tbody>
+              </table>
+            </div>
+            <div class="flex items-center justify-between gap-3 border-t border-slate-100 px-5 py-3 text-[10px] font-semibold text-slate-400">
+              <span><span id="students-total">0</span> siswa di tampilan ini</span>
+              <span class="flex items-center gap-1.5"><i class="fa-solid fa-arrows-rotate text-indigo-400" aria-hidden="true"></i> Sinkron otomatis</span>
+            </div>
+          </div>
+        </article>
+      </div>
+
+      <div class="mt-5 flex items-start gap-3 rounded-2xl border border-amber-200/70 bg-amber-50/75 px-4 py-3.5 text-xs leading-5 text-amber-950/80">
+        <i class="fa-solid fa-shield-halved mt-0.5 text-amber-600" aria-hidden="true"></i>
+        <p><strong class="font-extrabold text-amber-950">Petunjuk aman:</strong> gunakan hanya setelah izin orang tua/wali terdokumentasi. Siswa tanpa persetujuan biometrik tetap dapat dicatat manual tanpa foto atau descriptor wajah. Jangan jadikan hasil pencocokan otomatis sebagai satu-satunya dasar penilaian kehadiran.</p>
+      </div>
+    </section>
+
+    <!-- TAB 2: PENDAFTARAN WAJAH -->
+    <section data-panel="enrollment" aria-labelledby="enrollment-heading" hidden>
+      <div class="mb-5">
+        <p class="text-xs font-bold uppercase tracking-[.14em] text-slate-400">Data siswa</p>
+        <h2 id="enrollment-heading" class="mt-1 font-display text-xl font-extrabold tracking-tight text-slate-900">Pendaftaran wajah siswa</h2>
+        <p class="mt-1.5 text-sm text-slate-500">Simpan identitas dan satu foto wajah yang jelas untuk referensi pencocokan.</p>
+      </div>
+
+      <div class="grid items-start gap-5 xl:grid-cols-[.95fr_1.05fr]">
+        <article id="photo-enrollment-card" class="rounded-[26px] border border-slate-200/80 bg-white p-4 shadow-soft sm:p-6">
+          <div class="mb-4 flex items-center justify-between gap-3">
+            <div>
+              <h3 class="font-display text-sm font-extrabold text-slate-900">Foto referensi</h3>
+              <p class="mt-1 text-xs text-slate-500">Wajah menghadap kamera, pencahayaan merata.</p>
+            </div>
+            <span class="rounded-full bg-indigo-50 px-2.5 py-1 text-[10px] font-extrabold text-indigo-600">1 wajah / foto</span>
+          </div>
+          <div class="relative aspect-[4/3] overflow-hidden rounded-[21px] border border-slate-200 bg-slate-950">
+            <img id="photo-preview" class="absolute inset-0 h-full w-full object-cover" alt="Pratinjau foto siswa" hidden>
+            <video id="enroll-video" class="absolute inset-0 h-full w-full object-cover" autoplay muted playsinline hidden aria-label="Kamera untuk mengambil foto siswa"></video>
+            <div id="photo-placeholder" class="absolute inset-0 flex flex-col items-center justify-center bg-[radial-gradient(ellipse_at_50%_40%,#253550_0%,#121a2a_55%,#0a101c_100%)] px-6 text-center">
+              <span class="flex h-16 w-16 items-center justify-center rounded-[21px] border border-white/10 bg-white/[.06] text-2xl text-slate-400"><i class="fa-regular fa-image" aria-hidden="true"></i></span>
+              <p class="mt-4 text-sm font-bold text-white">Belum ada foto</p>
+              <p class="mt-1 max-w-xs text-xs leading-5 text-slate-400">Unggah foto atau ambil gambar langsung dari webcam.</p>
+            </div>
+            <span class="absolute left-3 top-3 rounded-full border border-white/10 bg-slate-950/55 px-2.5 py-1.5 text-[10px] font-bold text-white/90 backdrop-blur"><i class="fa-solid fa-face-smile mr-1 text-emerald-300" aria-hidden="true"></i> Foto wajah</span>
+          </div>
+          <input id="student-photo" class="hidden" type="file" accept="image/jpeg,image/png,image/webp">
+          <div class="mt-3 grid grid-cols-2 gap-2 sm:flex sm:flex-wrap">
+            <button id="choose-photo" type="button" class="flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-xs font-bold text-slate-600 transition hover:border-indigo-200 hover:text-indigo-700">
+              <i class="fa-solid fa-arrow-up-from-bracket text-indigo-500" aria-hidden="true"></i>Pilih foto
+            </button>
+            <button id="open-enroll-camera" type="button" class="flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-xs font-bold text-slate-600 transition hover:border-indigo-200 hover:text-indigo-700">
+              <i class="fa-solid fa-camera text-indigo-500" aria-hidden="true"></i>Gunakan kamera
+            </button>
+            <button id="capture-photo" type="button" class="col-span-2 hidden items-center justify-center gap-2 rounded-xl bg-slate-900 px-3.5 py-2.5 text-xs font-bold text-white transition hover:bg-slate-800 sm:col-span-1">
+              <i class="fa-solid fa-circle-dot text-rose-300" aria-hidden="true"></i>Ambil foto
+            </button>
+            <button id="close-enroll-camera" type="button" class="col-span-2 hidden items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-xs font-bold text-slate-600 sm:col-span-1">
+              <i class="fa-solid fa-xmark" aria-hidden="true"></i>Tutup kamera
+            </button>
+          </div>
+          <p id="photo-help" class="mt-3 text-[11px] leading-5 text-slate-400">Format JPG, PNG, atau WebP · maksimal 5 MB. Foto disimpan di bucket privat dan hanya dapat dibuka petugas yang login.</p>
+        </article>
+
+        <article class="rounded-[26px] border border-slate-200/80 bg-white p-4 shadow-soft sm:p-6">
+          <div class="mb-5 flex items-center gap-3">
+            <span class="flex h-10 w-10 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600"><i class="fa-solid fa-address-card" aria-hidden="true"></i></span>
+            <div>
+              <h3 class="font-display text-sm font-extrabold text-slate-900">Identitas siswa</h3>
+              <p class="mt-0.5 text-xs text-slate-500">Data biometrik hanya dibuat jika persetujuan orang tua/wali sudah diverifikasi.</p>
+            </div>
+          </div>
+          <form id="student-form" class="space-y-4">
+            <label class="flex cursor-pointer items-start gap-3 rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-3">
+              <input id="manual-only" type="checkbox" class="mt-0.5 h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500">
+              <span>
+                <span class="block text-xs font-extrabold text-slate-800">Daftarkan untuk presensi manual saja</span>
+                <span class="mt-1 block text-[11px] leading-5 text-slate-500">Tidak mengunggah foto dan tidak menyimpan descriptor wajah. Cocok untuk siswa yang tidak ikut presensi biometrik.</span>
+              </span>
+            </label>
+            <div>
+              <label for="student-nisn" class="mb-1.5 block text-xs font-bold text-slate-700">NISN <span class="text-rose-500">*</span></label>
+              <input id="student-nisn" name="nisn" type="text" inputmode="numeric" autocomplete="off" maxlength="30" required placeholder="Contoh: 0081234567" class="w-full rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-3 text-sm font-medium text-slate-800 outline-none transition placeholder:font-normal placeholder:text-slate-400 focus:border-indigo-400 focus:bg-white focus:ring-4 focus:ring-indigo-100">
+            </div>
+            <div>
+              <label for="student-name" class="mb-1.5 block text-xs font-bold text-slate-700">Nama lengkap <span class="text-rose-500">*</span></label>
+              <input id="student-name" name="name" type="text" autocomplete="name" maxlength="120" required placeholder="Nama sesuai data sekolah" class="w-full rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-3 text-sm font-medium text-slate-800 outline-none transition placeholder:font-normal placeholder:text-slate-400 focus:border-indigo-400 focus:bg-white focus:ring-4 focus:ring-indigo-100">
+            </div>
+            <div>
+              <label for="student-class" class="mb-1.5 block text-xs font-bold text-slate-700">Kelas <span class="text-rose-500">*</span></label>
+              <input id="student-class" name="class_name" type="text" autocomplete="off" maxlength="80" list="class-suggestions" required placeholder="Contoh: VII-A" class="w-full rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-3 text-sm font-medium text-slate-800 outline-none transition placeholder:font-normal placeholder:text-slate-400 focus:border-indigo-400 focus:bg-white focus:ring-4 focus:ring-indigo-100">
+              <datalist id="class-suggestions"></datalist>
+            </div>
+            <label id="consent-wrap" class="flex cursor-pointer items-start gap-3 rounded-xl border border-emerald-100 bg-emerald-50/70 px-3.5 py-3">
+              <input id="consent-check" type="checkbox" required class="mt-0.5 h-4 w-4 rounded border-emerald-300 text-emerald-600 focus:ring-emerald-500">
+              <span class="text-[11px] leading-5 text-emerald-950/80"><strong class="font-extrabold">Verifikasi persetujuan orang tua/wali.</strong> Saya memastikan persetujuan tertulis untuk pemrosesan foto dan template wajah bagi absensi telah diterima dan disimpan oleh sekolah. Persetujuan dapat ditarik; gunakan mode manual bila belum ada.</span>
+            </label>
+
+            <div id="enrollment-status" class="hidden rounded-xl border px-3.5 py-3 text-xs leading-5" role="status" aria-live="polite"></div>
+            <button id="enroll-submit" type="submit" class="flex w-full items-center justify-center gap-2 rounded-xl bg-indigo-600 px-4 py-3 text-sm font-extrabold text-white shadow-lg shadow-indigo-200 transition hover:bg-indigo-700 disabled:cursor-not-allowed disabled:bg-slate-300 disabled:shadow-none" disabled>
+              <i class="fa-solid fa-user-check" aria-hidden="true"></i><span>Simpan pendaftaran</span>
+            </button>
+          </form>
+          <div class="mt-4 flex items-start gap-2.5 rounded-xl bg-indigo-50/70 px-3.5 py-3 text-[11px] leading-5 text-indigo-800/80">
+            <i class="fa-solid fa-wand-magic-sparkles mt-0.5 text-indigo-500" aria-hidden="true"></i>
+            <p>Sistem mencari satu wajah dan membuat descriptor 128 angka di browser. Jika wajah tidak terdeteksi, gunakan foto yang lebih terang dan menghadap depan.</p>
+          </div>
+        </article>
+      </div>
+    </section>
+
+    <!-- TAB 3: KONFIGURASI SUPABASE -->
+    <section data-panel="settings" aria-labelledby="settings-heading" hidden>
+      <div class="mb-5">
+        <p class="text-xs font-bold uppercase tracking-[.14em] text-slate-400">Koneksi data</p>
+        <h2 id="settings-heading" class="mt-1 font-display text-xl font-extrabold tracking-tight text-slate-900">Konfigurasi Supabase</h2>
+        <p class="mt-1.5 text-sm text-slate-500">Masukkan URL project dan anon/publishable key. Pengaturan disimpan di browser ini.</p>
+      </div>
+      <div class="grid items-start gap-5 xl:grid-cols-[1.03fr_.97fr]">
+        <article class="rounded-[26px] border border-slate-200/80 bg-white p-4 shadow-soft sm:p-6">
+          <div class="mb-5 flex items-center gap-3">
+            <span class="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-50 text-emerald-700"><i class="fa-solid fa-plug" aria-hidden="true"></i></span>
+            <div>
+              <h3 class="font-display text-sm font-extrabold text-slate-900">Kredensial project</h3>
+              <p class="mt-0.5 text-xs text-slate-500">Ditemukan di Supabase → Project Settings → API.</p>
+            </div>
+          </div>
+          <form id="settings-form" class="space-y-4">
+            <div>
+              <label for="supabase-url" class="mb-1.5 block text-xs font-bold text-slate-700">SUPABASE_URL</label>
+              <input id="supabase-url" name="supabase_url" type="url" inputmode="url" autocomplete="url" placeholder="https://xxxxxxxx.supabase.co" class="w-full rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-3 text-sm font-medium text-slate-800 outline-none transition placeholder:font-normal placeholder:text-slate-400 focus:border-indigo-400 focus:bg-white focus:ring-4 focus:ring-indigo-100">
+            </div>
+            <div>
+              <div class="mb-1.5 flex items-center justify-between gap-3">
+                <label for="supabase-key" class="block text-xs font-bold text-slate-700">SUPABASE_ANON_KEY / publishable key</label>
+                <button id="toggle-key" type="button" class="text-[10px] font-bold text-indigo-600 hover:text-indigo-800" aria-label="Tampilkan atau sembunyikan key">Tampilkan</button>
+              </div>
+              <input id="supabase-key" name="supabase_key" type="password" autocomplete="off" spellcheck="false" placeholder="eyJ… atau sb_publishable_…" class="w-full rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-3 text-sm font-medium text-slate-800 outline-none transition placeholder:font-normal placeholder:text-slate-400 focus:border-indigo-400 focus:bg-white focus:ring-4 focus:ring-indigo-100">
+            </div>
+            <div id="settings-message" class="hidden rounded-xl border px-3.5 py-3 text-xs leading-5" role="status" aria-live="polite"></div>
+            <div class="flex flex-col gap-2 sm:flex-row">
+              <button id="save-settings" type="submit" class="flex flex-1 items-center justify-center gap-2 rounded-xl bg-indigo-600 px-4 py-3 text-sm font-extrabold text-white shadow-lg shadow-indigo-200 transition hover:bg-indigo-700">
+                <i class="fa-solid fa-link" aria-hidden="true"></i>Simpan &amp; hubungkan
+              </button>
+              <button id="clear-settings" type="button" class="flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-bold text-slate-600 transition hover:border-rose-200 hover:text-rose-600">
+                <i class="fa-regular fa-trash-can" aria-hidden="true"></i>Hapus konfigurasi
+              </button>
+            </div>
+          </form>
+          <p class="mt-4 text-[11px] leading-5 text-slate-400">Key anon/publishable boleh berada di browser karena RLS membatasi akses. <strong class="text-rose-600">Jangan pernah memasukkan service_role key.</strong></p>
+
+          <div class="my-5 border-t border-slate-100"></div>
+          <div class="mb-4 flex items-center gap-3">
+            <span class="flex h-10 w-10 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600"><i class="fa-solid fa-user-shield" aria-hidden="true"></i></span>
+            <div>
+              <h3 class="font-display text-sm font-extrabold text-slate-900">Akun petugas sekolah</h3>
+              <p class="mt-0.5 text-xs text-slate-500">Hanya akun yang diotorisasi admin dapat membuka data siswa.</p>
+            </div>
+          </div>
+          <form id="staff-login-form" class="space-y-3">
+            <div>
+              <label for="staff-email" class="mb-1.5 block text-xs font-bold text-slate-700">Email petugas</label>
+              <input id="staff-email" type="email" autocomplete="username" required placeholder="nama@sekolah.id" class="w-full rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-3 text-sm font-medium text-slate-800 outline-none transition placeholder:font-normal placeholder:text-slate-400 focus:border-indigo-400 focus:bg-white focus:ring-4 focus:ring-indigo-100">
+            </div>
+            <div>
+              <label for="staff-password" class="mb-1.5 block text-xs font-bold text-slate-700">Kata sandi</label>
+              <input id="staff-password" type="password" autocomplete="current-password" required placeholder="Kata sandi akun Supabase Auth" class="w-full rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-3 text-sm font-medium text-slate-800 outline-none transition placeholder:font-normal placeholder:text-slate-400 focus:border-indigo-400 focus:bg-white focus:ring-4 focus:ring-indigo-100">
+            </div>
+            <div id="login-message" class="hidden rounded-xl border px-3.5 py-3 text-xs leading-5" role="status" aria-live="polite"></div>
+            <button id="staff-login-button" type="submit" class="flex w-full items-center justify-center gap-2 rounded-xl bg-slate-900 px-4 py-3 text-sm font-extrabold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-300" disabled>
+              <i class="fa-solid fa-right-to-bracket" aria-hidden="true"></i>Masuk sebagai petugas
+            </button>
+          </form>
+          <div id="staff-session-panel" hidden class="rounded-2xl border border-emerald-100 bg-emerald-50/60 p-4">
+            <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div class="min-w-0">
+                <p class="text-[10px] font-extrabold uppercase tracking-[.12em] text-emerald-700">Sesi terautentikasi</p>
+                <p id="staff-session-name" class="mt-1 truncate text-sm font-extrabold text-slate-800"></p>
+                <p id="staff-session-role" class="mt-0.5 text-[11px] text-slate-500"></p>
+              </div>
+              <button id="staff-logout-button" type="button" class="rounded-xl border border-emerald-200 bg-white px-3.5 py-2.5 text-xs font-extrabold text-emerald-800 transition hover:bg-emerald-100">Keluar</button>
+            </div>
+          </div>
+          <p class="mt-3 text-[11px] leading-5 text-slate-400">Akun dibuat oleh administrator di Supabase Auth, lalu ditambahkan ke daftar petugas <code>school_staff</code>. Pendaftaran mandiri tidak diaktifkan.</p>
+        </article>
+
+        <div class="space-y-4">
+          <article class="rounded-[26px] border border-amber-200 bg-amber-50/85 p-4 sm:p-5">
+            <div class="flex items-start gap-3">
+              <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-amber-100 text-amber-700"><i class="fa-solid fa-triangle-exclamation" aria-hidden="true"></i></span>
+              <div>
+                <h3 class="font-display text-sm font-extrabold text-amber-950">Penting untuk data biometrik</h3>
+                <p class="mt-1.5 text-xs leading-5 text-amber-950/75">Aplikasi ini memakai login petugas dan RLS; skrip SQL menolak akses <code>anon</code> serta menyimpan foto di bucket privat. Admin tetap harus membuat akun dan mengotorisasi UUID petugas. Foto serta descriptor hanya diproses bila persetujuan orang tua/wali diverifikasi. Ini langkah teknis, bukan pengganti penilaian hukum, DPIA, prosedur insiden, atau kebijakan retensi sekolah.</p>
+              </div>
+            </div>
+          </article>
+          <article class="rounded-[26px] border border-slate-200/80 bg-white p-4 shadow-soft sm:p-5">
+            <h3 class="font-display text-sm font-extrabold text-slate-900">Langkah awal</h3>
+            <ol class="mt-3 space-y-3 text-xs leading-5 text-slate-600">
+              <li class="flex gap-3"><span class="flex h-6 w-6 shrink-0 items-center justify-center rounded-lg bg-indigo-50 text-[10px] font-extrabold text-indigo-600">01</span><span>Buat project Supabase khusus sekolah, pilih region setelah meninjau lokasi pemrosesan data, lalu jalankan <a class="font-bold text-indigo-600 underline decoration-indigo-200 underline-offset-2" href="./supabase.sql" download>supabase.sql</a>.</span></li>
+              <li class="flex gap-3"><span class="flex h-6 w-6 shrink-0 items-center justify-center rounded-lg bg-indigo-50 text-[10px] font-extrabold text-indigo-600">02</span><span>Buat akun petugas di Auth → Users dengan sign-up publik nonaktif. Masukkan UUID akun pertama sebagai <code>admin</code> ke <code>school_staff</code> melalui SQL Editor.</span></li>
+              <li class="flex gap-3"><span class="flex h-6 w-6 shrink-0 items-center justify-center rounded-lg bg-indigo-50 text-[10px] font-extrabold text-indigo-600">03</span><span>Hubungkan URL + anon/publishable key, lalu login. Daftarkan roster siswa; aktifkan biometrik hanya setelah persetujuan tertulis diverifikasi.</span></li>
+              <li class="flex gap-3"><span class="flex h-6 w-6 shrink-0 items-center justify-center rounded-lg bg-indigo-50 text-[10px] font-extrabold text-indigo-600">04</span><span>Uji kamera/Realtime di jaringan sekolah; petugas mengonfirmasi setiap kandidat atau menandai hadir manual.</span></li>
+            </ol>
+            <div class="mt-4 rounded-xl bg-slate-50 px-3.5 py-3 text-[11px] leading-5 text-slate-500"><i class="fa-solid fa-lock mr-1 text-emerald-600" aria-hidden="true"></i> Kamera memerlukan konteks aman: gunakan HTTPS atau <code>localhost</code>. Model wajah dan library dimuat dari CDN, jadi browser perlu koneksi internet.</div>
+          </article>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="border-t border-slate-200/70 bg-white/65">
+    <div class="mx-auto flex max-w-[1480px] flex-col gap-2 px-4 py-5 text-[10px] leading-5 text-slate-400 sm:flex-row sm:items-center sm:justify-between sm:px-6 lg:px-8">
+      <span>SD Negeri Klumprit 04 Nusawungu · deteksi berlangsung di browser.</span>
+      <span>Verifikasi manusia diperlukan; siswa tanpa biometrik dapat dicatat manual.</span>
+    </div>
+  </footer>
+
+  <div id="toast" class="fixed bottom-4 right-4 z-50 hidden w-[min(370px,calc(100vw-2rem))] rounded-2xl border bg-white p-4 shadow-2xl" role="status" aria-live="polite">
+    <div class="flex items-start gap-3">
+      <span id="toast-icon" class="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-emerald-100 text-emerald-700"><i class="fa-solid fa-check" aria-hidden="true"></i></span>
+      <div class="min-w-0 flex-1">
+        <p id="toast-title" class="text-sm font-extrabold text-slate-900">Berhasil</p>
+        <p id="toast-message" class="mt-0.5 text-xs leading-5 text-slate-500"></p>
+      </div>
+      <button id="toast-close" type="button" class="mt-0.5 text-slate-400 hover:text-slate-700" aria-label="Tutup notifikasi"><i class="fa-solid fa-xmark" aria-hidden="true"></i></button>
+    </div>
+  </div>
+
+  <script type="module">
+    // Aplikasi satu file: semua kredensial publik disimpan lokal di browser, tidak ada service_role key.
+    const $ = (selector) => document.querySelector(selector);
+    const CONFIG_KEY = 'ruang-kelas-supabase-config-v1';
+    const MODEL_URL = 'https://cdn.jsdelivr.net/npm/@vladmandic/face-api@1.7.15/model';
+    const MATCH_THRESHOLD = 0.48;
+    const PHOTO_BUCKET = 'student-photos';
+    const PHOTO_MAX_BYTES = 5 * 1024 * 1024;
+    const ALL_CLASSES = '__all__';
+
+    const state = {
+      client: null,
+      authSubscription: null,
+      session: null,
+      staff: null,
+      authActivationToken: null,
+      authActivationPromise: null,
+      channel: null,
+      realtimeReady: false,
+      modelsReady: false,
+      students: [],
+      studentsById: new Map(),
+      attendances: new Map(),
+      pendingAttendance: new Set(),
+      matcher: null,
+      photoUrlCache: new Map(),
+      pendingCandidate: null,
+      suppressedCandidates: new Map(),
+      selectedClass: ALL_CLASSES,
+      cameraStream: null,
+      scanning: false,
+      scanTimer: null,
+      toastTimer: null,
+      matchTimer: null,
+      enrollStream: null,
+      selectedPhoto: null,
+      previewUrl: null,
+      enrolling: false
+    };
+
+    const SCHOOL_TIME_ZONE = 'Asia/Jakarta';
+
+    const dateForDb = () => {
+      const parts = new Intl.DateTimeFormat('en-CA', {
+        timeZone: SCHOOL_TIME_ZONE,
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit'
+      }).formatToParts(new Date());
+      const values = Object.fromEntries(parts.map((part) => [part.type, part.value]));
+      return `${values.year}-${values.month}-${values.day}`;
+    };
+
+    function updateHeaderDate() {
+      const today = new Date();
+      const formatted = new Intl.DateTimeFormat('id-ID', {
+        weekday: 'long', day: 'numeric', month: 'long', year: 'numeric', timeZone: SCHOOL_TIME_ZONE
+      }).format(today);
+      $('#header-date').textContent = formatted;
+      $('#today-date').textContent = formatted;
+    }
+
+    function setPill(id, labelId, stateName, text) {
+      const pill = $(id);
+      pill.dataset.state = stateName;
+      $(labelId).textContent = text;
+    }
+
+    const setConnectionStatus = (stateName, text) => setPill('#connection-status', '#connection-label', stateName, text);
+    const setModelStatus = (stateName, text) => setPill('#model-status', '#model-label', stateName, text);
+    const setRealtimeStatus = (stateName, text) => setPill('#realtime-status', '#realtime-label', stateName, text);
+    const setStaffStatus = (stateName, text) => setPill('#staff-status', '#staff-label', stateName, text);
+    const isStaffReady = () => Boolean(state.client && state.session && state.staff?.is_active);
+
+    function setInlineMessage(element, message, tone = 'info') {
+      const tones = {
+        info: 'border-indigo-100 bg-indigo-50 text-indigo-800',
+        success: 'border-emerald-100 bg-emerald-50 text-emerald-800',
+        error: 'border-rose-100 bg-rose-50 text-rose-800',
+        warning: 'border-amber-100 bg-amber-50 text-amber-900'
+      };
+      element.className = `rounded-xl border px-3.5 py-3 text-xs leading-5 ${tones[tone] || tones.info}`;
+      element.textContent = message;
+      element.hidden = false;
+    }
+
+    function showToast(title, message, tone = 'success') {
+      const toast = $('#toast');
+      const icon = $('#toast-icon');
+      const tones = {
+        success: { border: 'border-emerald-100', icon: 'bg-emerald-100 text-emerald-700', glyph: 'fa-solid fa-check' },
+        error: { border: 'border-rose-100', icon: 'bg-rose-100 text-rose-700', glyph: 'fa-solid fa-triangle-exclamation' },
+        info: { border: 'border-indigo-100', icon: 'bg-indigo-100 text-indigo-700', glyph: 'fa-solid fa-circle-info' }
+      };
+      const style = tones[tone] || tones.info;
+      toast.className = `toast-enter fixed bottom-4 right-4 z-50 w-[min(370px,calc(100vw-2rem))] rounded-2xl border ${style.border} bg-white p-4 shadow-2xl`;
+      icon.className = `flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ${style.icon}`;
+      icon.innerHTML = `<i class="${style.glyph}" aria-hidden="true"></i>`;
+      $('#toast-title').textContent = title;
+      $('#toast-message').textContent = message;
+      window.clearTimeout(state.toastTimer);
+      state.toastTimer = window.setTimeout(() => { toast.classList.add('hidden'); }, 4500);
+    }
+
+    function showCameraNotice(name, message, tone = 'success') {
+      const notice = $('#match-notice');
+      const good = tone === 'success';
+      const candidate = tone === 'candidate';
+      const error = tone === 'error';
+      const toneClasses = {
+        success: 'border-emerald-300/30 bg-emerald-950/90',
+        candidate: 'border-amber-300/30 bg-amber-950/90',
+        error: 'border-rose-300/30 bg-rose-950/90',
+        info: 'border-amber-300/30 bg-amber-950/90'
+      };
+      notice.className = `absolute bottom-3 left-3 right-3 rounded-2xl border p-3 text-white shadow-2xl backdrop-blur-md ${toneClasses[tone] || toneClasses.info}`;
+      const icon = notice.querySelector('span');
+      icon.className = `flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ${good ? 'bg-emerald-400 text-emerald-950' : error ? 'bg-rose-300 text-rose-950' : 'bg-amber-300 text-amber-950'}`;
+      icon.innerHTML = `<i class="fa-solid ${good ? 'fa-check' : candidate ? 'fa-user-check' : error ? 'fa-triangle-exclamation' : 'fa-circle-info'}" aria-hidden="true"></i>`;
+      $('#match-name').textContent = name;
+      $('#match-detail').textContent = message;
+      $('#candidate-actions').classList.toggle('hidden', !candidate);
+      $('#candidate-actions').classList.toggle('flex', candidate);
+      notice.hidden = false;
+      window.clearTimeout(state.matchTimer);
+      if (!candidate) state.matchTimer = window.setTimeout(() => { notice.hidden = true; }, 5000);
+    }
+
+    function queueAttendanceCandidate(student) {
+      if (!student || state.attendances.has(String(student.id))) return;
+      const suppressedUntil = state.suppressedCandidates.get(String(student.id)) || 0;
+      if (Date.now() < suppressedUntil) return;
+      if (state.pendingCandidate) return;
+      state.pendingCandidate = student;
+      showCameraNotice(student.name, 'Kemiripan ditemukan. Pastikan siswa yang terlihat benar, lalu konfirmasi kehadiran.', 'candidate');
+    }
+
+    function dismissCandidate() {
+      if (state.pendingCandidate) state.suppressedCandidates.set(String(state.pendingCandidate.id), Date.now() + 15000);
+      state.pendingCandidate = null;
+      $('#match-notice').hidden = true;
+      $('#candidate-actions').classList.add('hidden');
+      $('#candidate-actions').classList.remove('flex');
+    }
+
+    async function confirmManualAttendance(student) {
+      if (!isStaffReady()) return;
+      const confirmed = window.confirm(`Konfirmasi manual: ${student.name} (${student.class_name}) hadir di sekolah hari ini?`);
+      if (confirmed) await recordAttendance(student, 'Manual');
+    }
+
+    function safeGetConfig() {
+      try {
+        const raw = window.localStorage.getItem(CONFIG_KEY);
+        if (!raw) return null;
+        const value = JSON.parse(raw);
+        return value && typeof value.url === 'string' && typeof value.key === 'string' ? value : null;
+      } catch (error) {
+        console.warn('Tidak dapat membaca LocalStorage:', error);
+        return null;
+      }
+    }
+
+    function activeStudents() {
+      if (state.selectedClass === ALL_CLASSES) return state.students;
+      return state.students.filter((student) => student.class_name === state.selectedClass);
+    }
+
+    function hasValidDescriptor(value) {
+      return Array.isArray(value) && value.length === 128 && value.every((part) => Number.isFinite(Number(part)));
+    }
+
+    function rebuildMatcher() {
+      state.matcher = null;
+      state.studentsById = new Map(state.students.map((student) => [String(student.id), student]));
+      if (!state.modelsReady || !window.faceapi) {
+        updateReadyControls();
+        return;
+      }
+      const labeled = activeStudents()
+        .filter((student) => student.consent_confirmed && hasValidDescriptor(student.face_descriptor))
+        .map((student) => new window.faceapi.LabeledFaceDescriptors(String(student.id), [new Float32Array(student.face_descriptor.map(Number))]));
+      if (labeled.length) state.matcher = new window.faceapi.FaceMatcher(labeled, MATCH_THRESHOLD);
+      updateReadyControls();
+    }
+
+    function visibleClassNames() {
+      return [...new Set(state.students.map((student) => String(student.class_name || '').trim()).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'id'));
+    }
+
+    function refreshClassControls() {
+      const names = visibleClassNames();
+      const filter = $('#class-filter');
+      const previous = state.selectedClass;
+      filter.replaceChildren();
+      const allOption = document.createElement('option');
+      allOption.value = ALL_CLASSES;
+      allOption.textContent = 'Semua kelas';
+      filter.append(allOption);
+      names.forEach((name) => {
+        const option = document.createElement('option');
+        option.value = name;
+        option.textContent = name;
+        filter.append(option);
+      });
+      if (previous !== ALL_CLASSES && names.includes(previous)) {
+        state.selectedClass = previous;
+      } else {
+        state.selectedClass = ALL_CLASSES;
+      }
+      filter.value = state.selectedClass;
+
+      const datalist = $('#class-suggestions');
+      datalist.replaceChildren();
+      names.forEach((name) => {
+        const option = document.createElement('option');
+        option.value = name;
+        datalist.append(option);
+      });
+    }
+
+    function initials(name) {
+      return String(name || '?').trim().split(/\s+/).filter(Boolean).slice(0, 2).map((part) => part[0]).join('').toUpperCase() || '?';
+    }
+
+    function storagePathForPhoto(value) {
+      if (typeof value !== 'string' || !value.trim()) return '';
+      const raw = value.trim();
+      const marker = `/storage/v1/object/public/${PHOTO_BUCKET}/`;
+      if (raw.startsWith('https://') || raw.startsWith('http://')) {
+        try {
+          const pathname = new URL(raw).pathname;
+          const markerIndex = pathname.indexOf(marker);
+          return markerIndex >= 0 ? decodeURIComponent(pathname.slice(markerIndex + marker.length)) : '';
+        } catch { return ''; }
+      }
+      return raw.startsWith('/') || raw.includes('..') ? '' : raw;
+    }
+
+    async function getSignedPhotoUrl(path) {
+      const cached = state.photoUrlCache.get(path);
+      if (cached && cached.expiresAt > Date.now() + 30000) return cached.promise || cached.url;
+      const client = state.client;
+      if (!client || !isStaffReady()) return '';
+      const entry = { expiresAt: Date.now() + 9 * 60 * 1000, promise: null, url: '' };
+      entry.promise = client.storage.from(PHOTO_BUCKET).createSignedUrl(path, 600).then(({ data, error }) => {
+        if (error) throw error;
+        entry.url = data?.signedUrl || '';
+        if (!entry.url) throw new Error('Signed URL foto kosong.');
+        entry.promise = null;
+        return entry.url;
+      }).catch((error) => {
+        state.photoUrlCache.delete(path);
+        throw error;
+      });
+      state.photoUrlCache.set(path, entry);
+      return entry.promise;
+    }
+
+    function createAvatar(student) {
+      const wrapper = document.createElement('div');
+      wrapper.className = 'flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-gradient-to-br from-indigo-100 to-blue-100 text-[11px] font-extrabold text-indigo-700';
+      const path = storagePathForPhoto(student.photo_url);
+      if (!path || !isStaffReady()) {
+        wrapper.textContent = initials(student.name);
+        return wrapper;
+      }
+      const image = document.createElement('img');
+      image.alt = '';
+      image.loading = 'lazy';
+      image.className = 'h-full w-full object-cover';
+      image.addEventListener('error', () => {
+        if (wrapper.isConnected) wrapper.replaceChildren(document.createTextNode(initials(student.name)));
+      }, { once: true });
+      wrapper.append(image);
+      void getSignedPhotoUrl(path).then((url) => {
+        if (url && wrapper.isConnected) image.src = url;
+      }).catch((error) => {
+        console.warn('Tidak dapat memuat foto privat:', error);
+        if (wrapper.isConnected) wrapper.replaceChildren(document.createTextNode(initials(student.name)));
+      });
+      return wrapper;
+    }
+
+    function makeCell(text, className = '') {
+      const cell = document.createElement('td');
+      cell.className = className;
+      cell.textContent = text;
+      return cell;
+    }
+
+    const isConfirmedAttendance = (row) => Boolean(row && ['Wajah', 'Manual'].includes(row.method));
+
+    function renderAttendance() {
+      const students = [...activeStudents()].sort((a, b) => {
+        const aRow = state.attendances.get(String(a.id));
+        const bRow = state.attendances.get(String(b.id));
+        const aPresent = isConfirmedAttendance(aRow) ? 0 : aRow ? 1 : 2;
+        const bPresent = isConfirmedAttendance(bRow) ? 0 : bRow ? 1 : 2;
+        return aPresent - bPresent || String(a.name).localeCompare(String(b.name), 'id');
+      });
+      const presentCount = students.filter((student) => isConfirmedAttendance(state.attendances.get(String(student.id)))).length;
+      $('#present-count').textContent = String(presentCount);
+      $('#absent-count').textContent = String(Math.max(0, students.length - presentCount));
+      $('#students-total').textContent = String(students.length);
+      $('#class-summary').textContent = state.selectedClass === ALL_CLASSES ? 'Semua kelas · seluruh siswa' : `Kelas ${state.selectedClass}`;
+
+      const tbody = $('#attendance-rows');
+      tbody.replaceChildren();
+      if (!students.length) {
+        const row = document.createElement('tr');
+        const cell = document.createElement('td');
+        cell.colSpan = 4;
+        cell.className = 'px-5 py-12 text-center';
+        const icon = document.createElement('span');
+        icon.className = 'mx-auto flex h-11 w-11 items-center justify-center rounded-2xl bg-slate-100 text-slate-400';
+        icon.innerHTML = '<i class="fa-solid fa-users" aria-hidden="true"></i>';
+        const title = document.createElement('p');
+        title.className = 'mt-3 text-sm font-bold text-slate-600';
+        title.textContent = !state.client ? 'Hubungkan Supabase terlebih dahulu' : !isStaffReady() ? 'Masuk sebagai petugas sekolah' : 'Belum ada data siswa';
+        const detail = document.createElement('p');
+        detail.className = 'mt-1 text-xs text-slate-400';
+        detail.textContent = !state.client ? 'Buka tab Konfigurasi untuk mengisi kredensial project.' : !isStaffReady() ? 'Gunakan akun yang sudah dimasukkan admin ke daftar school_staff.' : 'Tambahkan seluruh roster; siswa dapat memakai mode manual tanpa biometrik.';
+        cell.append(icon, title, detail);
+        row.append(cell);
+        tbody.append(row);
+        return;
+      }
+
+      students.forEach((student) => {
+        const attendance = state.attendances.get(String(student.id));
+        const row = document.createElement('tr');
+        row.className = 'transition hover:bg-slate-50/80';
+        const identity = document.createElement('td');
+        identity.className = 'px-4 py-3 pl-5';
+        const identityWrap = document.createElement('div');
+        identityWrap.className = 'flex min-w-0 items-center gap-3';
+        const textWrap = document.createElement('div');
+        textWrap.className = 'min-w-0';
+        const name = document.createElement('p');
+        name.className = 'max-w-[175px] truncate text-xs font-extrabold text-slate-800';
+        name.textContent = student.name || 'Nama tidak tersedia';
+        const nisn = document.createElement('p');
+        nisn.className = 'mt-0.5 text-[10px] font-medium text-slate-400';
+        nisn.textContent = `NISN ${student.nisn || '—'}`;
+        textWrap.append(name, nisn);
+        identityWrap.append(createAvatar(student), textWrap);
+        identity.append(identityWrap);
+        row.append(identity);
+        row.append(makeCell(student.class_name || '—', 'px-3 py-3 text-[11px] font-semibold text-slate-500'));
+        const timeCell = document.createElement('td');
+        timeCell.className = 'px-3 py-3 text-xs font-bold tabular-nums text-slate-600';
+        timeCell.textContent = attendance?.time ? String(attendance.time).slice(0, 5) : '—';
+        if (attendance?.method) {
+          const method = document.createElement('span');
+          method.className = 'mt-0.5 block text-[9px] font-semibold text-slate-400';
+          method.textContent = attendance.method === 'Manual' ? 'dicatat manual' : attendance.method === 'Wajah' ? 'wajah + konfirmasi' : 'log lama · perlu audit';
+          timeCell.append(method);
+        }
+        row.append(timeCell);
+        const statusCell = document.createElement('td');
+        statusCell.className = 'px-3 py-3 pr-5';
+        const statusWrap = document.createElement('div');
+        statusWrap.className = 'flex flex-col items-start gap-1.5';
+        const badge = document.createElement('span');
+        badge.className = isConfirmedAttendance(attendance)
+          ? 'inline-flex items-center gap-1.5 whitespace-nowrap rounded-full bg-emerald-50 px-2 py-1 text-[9px] font-extrabold text-emerald-700'
+          : attendance
+            ? 'inline-flex items-center gap-1.5 whitespace-nowrap rounded-full bg-amber-50 px-2 py-1 text-[9px] font-extrabold text-amber-700'
+            : 'inline-flex items-center gap-1.5 whitespace-nowrap rounded-full bg-slate-100 px-2 py-1 text-[9px] font-extrabold text-slate-500';
+        badge.innerHTML = isConfirmedAttendance(attendance)
+          ? '<i class="fa-solid fa-circle-check" aria-hidden="true"></i> Hadir'
+          : attendance
+            ? '<i class="fa-solid fa-triangle-exclamation" aria-hidden="true"></i> Perlu audit'
+            : '<i class="fa-regular fa-circle" aria-hidden="true"></i> Belum hadir';
+        statusWrap.append(badge);
+        if (!attendance && isStaffReady()) {
+          const manualButton = document.createElement('button');
+          manualButton.type = 'button';
+          manualButton.className = 'whitespace-nowrap rounded-lg border border-slate-200 bg-white px-2 py-1 text-[9px] font-extrabold text-slate-600 transition hover:border-indigo-200 hover:text-indigo-700';
+          manualButton.textContent = 'Tandai manual';
+          manualButton.setAttribute('aria-label', `Catat ${student.name} hadir secara manual`);
+          manualButton.addEventListener('click', () => confirmManualAttendance(student));
+          statusWrap.append(manualButton);
+        }
+        statusCell.append(statusWrap);
+        row.append(statusCell);
+        tbody.append(row);
+      });
+    }
+
+    function updateReadyControls() {
+      const cameraSupported = Boolean(navigator.mediaDevices?.getUserMedia);
+      const ready = state.modelsReady && isStaffReady() && Boolean(state.matcher) && cameraSupported;
+      const manualOnly = $('#manual-only')?.checked;
+      $('#start-camera').disabled = !ready || Boolean(state.cameraStream);
+      $('#stop-camera').disabled = !state.cameraStream;
+      $('#enroll-submit').disabled = state.enrolling || !isStaffReady() || (!manualOnly && !state.modelsReady);
+      $('#staff-login-button').disabled = !state.client || Boolean(state.loginInProgress);
+
+      const hint = $('#camera-hint');
+      if (!cameraSupported) {
+        hint.textContent = 'Browser ini tidak mendukung webcam. Buka aplikasi melalui HTTPS atau localhost dengan browser modern.';
+      } else if (!state.client) {
+        hint.textContent = 'Buka tab Konfigurasi dan hubungkan project Supabase terlebih dahulu.';
+      } else if (!isStaffReady()) {
+        hint.textContent = 'Masuk dengan akun petugas yang diotorisasi admin untuk membaca roster dan presensi.';
+      } else if (!state.students.length) {
+        hint.textContent = 'Roster masih kosong. Tambahkan semua siswa; mode manual tersedia tanpa menyimpan biometrik.';
+      } else if (!state.modelsReady) {
+        hint.textContent = 'Menunggu model wajah dari CDN. Pastikan koneksi internet aktif. Presensi manual tetap tersedia di daftar siswa.';
+      } else if (!state.matcher) {
+        hint.textContent = 'Kelas ini tidak memiliki template wajah dengan persetujuan terverifikasi. Presensi manual tetap tersedia.';
+      } else {
+        hint.textContent = `Kandidat wajah hanya saran untuk ${activeStudents().length} siswa; tidak ada liveness (foto/layar bisa menipu). Petugas harus memeriksa langsung dan mengonfirmasi. Siswa lain dapat dicatat manual.`;
+      }
+    }
+
+    function normalizeStudent(raw) {
+      let descriptor = raw.face_descriptor;
+      if (typeof descriptor === 'string') {
+        try { descriptor = JSON.parse(descriptor); } catch { descriptor = null; }
+      }
+      return {
+        ...raw,
+        id: String(raw.id),
+        nisn: String(raw.nisn ?? ''),
+        name: String(raw.name ?? ''),
+        class_name: String(raw.class_name ?? ''),
+        consent_confirmed: Boolean(raw.consent_confirmed),
+        face_descriptor: descriptor
+      };
+    }
+
+    async function loadAllStudents(client) {
+      const rows = [];
+      const pageSize = 1000;
+      for (let from = 0; ; from += pageSize) {
+        const { data, error } = await client.from('students')
+          .select('id, nisn, name, class_name, photo_url, consent_confirmed, created_at')
+          .order('name', { ascending: true })
+          .range(from, from + pageSize - 1);
+        if (error) throw error;
+        rows.push(...(data || []));
+        if (!data || data.length < pageSize) break;
+      }
+      const templates = [];
+      for (let from = 0; ; from += pageSize) {
+        const { data, error } = await client.from('student_face_templates')
+          .select('student_id, face_descriptor')
+          .range(from, from + pageSize - 1);
+        if (error) throw error;
+        templates.push(...(data || []));
+        if (!data || data.length < pageSize) break;
+      }
+      const descriptors = new Map(templates.map((item) => [String(item.student_id), item.face_descriptor]));
+      return rows.map((raw) => normalizeStudent({ ...raw, face_descriptor: descriptors.get(String(raw.id)) || null }));
+    }
+
+    async function loadTodayAttendances(client) {
+      const rows = [];
+      const pageSize = 1000;
+      for (let from = 0; ; from += pageSize) {
+        const { data, error } = await client.from('attendances')
+          .select('id, student_id, class_name, date, time, status, method')
+          .eq('date', dateForDb())
+          .order('time', { ascending: true })
+          .range(from, from + pageSize - 1);
+        if (error) throw error;
+        rows.push(...(data || []));
+        if (!data || data.length < pageSize) break;
+      }
+      return rows;
+    }
+
+    function applyStudents(students) {
+      state.students = students;
+      refreshClassControls();
+      rebuildMatcher();
+      renderAttendance();
+      updateReadyControls();
+    }
+
+    function mergeAttendance(row) {
+      if (!row || String(row.date) !== dateForDb() || !row.student_id) return;
+      state.attendances.set(String(row.student_id), row);
+      renderAttendance();
+    }
+
+    async function refreshAttendanceOnly() {
+      if (!state.client) return;
+      const client = state.client;
+      const rows = await loadTodayAttendances(client);
+      if (client !== state.client) return;
+      state.attendances = new Map(rows.map((row) => [String(row.student_id), row]));
+      renderAttendance();
+    }
+
+    async function removeCurrentChannel() {
+      if (!state.channel || !state.client) {
+        state.channel = null;
+        state.realtimeReady = false;
+        return;
+      }
+      try { await state.client.removeChannel(state.channel); } catch (error) { console.warn('Gagal menutup channel lama:', error); }
+      state.channel = null;
+      state.realtimeReady = false;
+    }
+
+    function subscribeToAttendance(client) {
+      setRealtimeStatus('loading', 'Menghubungkan realtime…');
+      return new Promise((resolve) => {
+        let resolved = false;
+        let fallbackTimer = null;
+        const finish = () => {
+          if (resolved) return;
+          resolved = true;
+          if (fallbackTimer !== null) window.clearTimeout(fallbackTimer);
+          resolve();
+        };
+        fallbackTimer = window.setTimeout(finish, 6500);
+        state.channel = client.channel(`attendance-live-${Date.now()}`)
+          .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'attendances' }, (payload) => {
+            mergeAttendance(payload.new);
+          })
+          .subscribe((status, error) => {
+            if (status === 'SUBSCRIBED') {
+              state.realtimeReady = true;
+              setRealtimeStatus('online', 'Realtime aktif');
+              finish();
+            } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
+              state.realtimeReady = false;
+              setRealtimeStatus('error', 'Realtime terputus');
+              if (error) console.warn('Supabase Realtime:', error);
+              finish();
+            }
+          });
+      });
+    }
+
+    function updateAuthControls() {
+      const authorized = isStaffReady();
+      $('#staff-login-form').hidden = authorized;
+      $('#staff-session-panel').hidden = !authorized;
+      $('#staff-login-button').disabled = !state.client || Boolean(state.loginInProgress);
+      if (authorized) {
+        $('#staff-session-name').textContent = state.staff.full_name || state.session.user.email || 'Petugas sekolah';
+        const assignedClasses = Array.isArray(state.staff.class_names) ? state.staff.class_names : [];
+        $('#staff-session-role').textContent = state.staff.role === 'admin'
+          ? 'Administrator · semua kelas'
+          : assignedClasses.length ? `Petugas · ${assignedClasses.join(', ')}` : 'Petugas · belum diberi kelas';
+        setStaffStatus('online', state.staff.full_name || 'Petugas masuk');
+      } else {
+        $('#staff-session-name').textContent = '';
+        $('#staff-session-role').textContent = '';
+        setStaffStatus('idle', state.client ? 'Login diperlukan' : 'Belum masuk');
+      }
+      updateReadyControls();
+    }
+
+    async function removeAuthListener() {
+      if (!state.authSubscription) return;
+      try { await state.authSubscription.unsubscribe(); } catch (error) { console.warn('Gagal melepas listener Auth:', error); }
+      state.authSubscription = null;
+    }
+
+    async function deactivateStaffSession(client = state.client) {
+      if (!client || client !== state.client) return;
+      state.authActivationToken = null;
+      state.authActivationPromise = null;
+      state.session = null;
+      state.staff = null;
+      await stopAttendanceCamera();
+      await stopEnrollmentCamera();
+      clearSelectedPhoto();
+      $('#student-form').reset();
+      updateEnrollmentMode();
+      await removeCurrentChannel();
+      state.session = null;
+      state.staff = null;
+      state.photoUrlCache.clear();
+      state.attendances = new Map();
+      state.pendingCandidate = null;
+      applyStudents([]);
+      setConnectionStatus('idle', 'Login petugas diperlukan');
+      setRealtimeStatus('idle', 'Menunggu login');
+      updateAuthControls();
+    }
+
+    async function activateStaffSession(client, session) {
+      if (!session || client !== state.client) return;
+      const userId = session.user?.id;
+      const token = session.access_token;
+      if (!userId || !token) return;
+      if (state.authActivationToken === token && state.authActivationPromise) return state.authActivationPromise;
+      if (state.staff && state.session?.user?.id === userId) {
+        state.session = session;
+        state.authActivationToken = token;
+        updateAuthControls();
+        return;
+      }
+
+      state.authActivationToken = token;
+      state.session = session;
+      state.staff = null;
+      state.attendances = new Map();
+      state.photoUrlCache.clear();
+      updateAuthControls();
+      setConnectionStatus('loading', 'Memeriksa akun…');
+      setRealtimeStatus('loading', 'Menunggu otorisasi…');
+
+      const activation = (async () => {
+        await removeCurrentChannel();
+        try {
+          const { data: staff, error } = await client.from('school_staff')
+            .select('user_id, full_name, role, class_names, is_active')
+            .eq('user_id', userId)
+            .maybeSingle();
+          if (error) throw error;
+          if (!staff || !staff.is_active) {
+            state.authActivationToken = null;
+            state.session = null;
+            state.staff = null;
+            await client.auth.signOut({ scope: 'local' });
+            await deactivateStaffSession(client);
+            setStaffStatus('error', 'Akun tidak diotorisasi');
+            setInlineMessage($('#login-message'), 'Akun ini belum diotorisasi oleh administrator SD Negeri Klumprit 04 Nusawungu. Minta admin menambahkan UUID akun ke school_staff.', 'error');
+            return;
+          }
+          state.staff = staff;
+          updateAuthControls();
+          await subscribeToAttendance(client);
+          const [students, attendances] = await Promise.all([loadAllStudents(client), loadTodayAttendances(client)]);
+          if (client !== state.client || state.authActivationToken !== token) return;
+          applyStudents(students);
+          state.attendances = new Map(attendances.map((row) => [String(row.student_id), row]));
+          renderAttendance();
+          setConnectionStatus('online', 'Supabase terhubung');
+          if (!state.realtimeReady) setRealtimeStatus('error', 'Realtime belum aktif');
+          setStaffStatus('online', staff.full_name || 'Petugas masuk');
+          $('#login-message').hidden = true;
+          setInlineMessage($('#settings-message'), `Login berhasil. ${students.length} siswa dan ${attendances.length} presensi tanggal ${dateForDb()} dimuat.`, 'success');
+          updateReadyControls();
+        } catch (error) {
+          console.error('Gagal mengaktifkan sesi petugas:', error);
+          if (client === state.client && state.authActivationToken === token) {
+            await removeCurrentChannel();
+            state.staff = null;
+            state.attendances = new Map();
+            state.photoUrlCache.clear();
+            applyStudents([]);
+            setConnectionStatus('error', 'Data gagal dimuat');
+            setRealtimeStatus('error', 'Realtime tidak tersedia');
+            setStaffStatus('error', 'Akses belum siap');
+            updateAuthControls();
+            setInlineMessage($('#login-message'), `${error?.message || 'Tidak dapat membaca data sekolah.'} Pastikan skema dan policy SQL sudah terpasang.`, 'error');
+          }
+        }
+      })();
+      state.authActivationPromise = activation;
+      try { await activation; }
+      finally {
+        if (state.authActivationPromise === activation) state.authActivationPromise = null;
+      }
+    }
+
+    async function connectSupabase(url, key) {
+      await removeCurrentChannel();
+      await removeAuthListener();
+      state.client = null;
+      state.session = null;
+      state.staff = null;
+      state.authActivationToken = null;
+      state.authActivationPromise = null;
+      state.photoUrlCache.clear();
+      state.attendances = new Map();
+      applyStudents([]);
+      setConnectionStatus('loading', 'Menghubungkan…');
+      setRealtimeStatus('idle', 'Menunggu login');
+      let client;
+      try {
+        const supabaseGlobal = window.supabase;
+        if (!supabaseGlobal?.createClient) throw new Error('Supabase JS belum dimuat. Periksa koneksi internet atau pemblokir konten.');
+        const parsedUrl = new URL(url);
+        const localDevelopment = parsedUrl.protocol === 'http:' && ['localhost', '127.0.0.1', '::1'].includes(parsedUrl.hostname);
+        if (parsedUrl.protocol !== 'https:' && !localDevelopment) throw new Error('URL Supabase harus menggunakan HTTPS (HTTP hanya diizinkan untuk localhost).');
+        client = supabaseGlobal.createClient(url, key, {
+          auth: { persistSession: false, autoRefreshToken: true, detectSessionInUrl: false }
+        });
+      } catch (error) {
+        setConnectionStatus('error', 'Koneksi gagal');
+        setRealtimeStatus('error', 'Realtime tidak tersedia');
+        setInlineMessage($('#settings-message'), error?.message || 'URL atau key Supabase tidak valid.', 'error');
+        throw error;
+      }
+      state.client = client;
+      const { data: listener } = client.auth.onAuthStateChange((event, session) => {
+        // Supabase menyarankan callback Auth tidak menjalankan query yang menunggu lock Auth.
+        window.setTimeout(() => {
+          if (client !== state.client) return;
+          if (session) void activateStaffSession(client, session);
+          else if (event === 'SIGNED_OUT') void deactivateStaffSession(client);
+        }, 0);
+      });
+      state.authSubscription = listener.subscription;
+      updateAuthControls();
+      try {
+        const { data, error } = await client.auth.getSession();
+        if (error) throw error;
+        if (data.session) {
+          await activateStaffSession(client, data.session);
+        } else {
+          setConnectionStatus('idle', 'Login petugas diperlukan');
+          setRealtimeStatus('idle', 'Menunggu login');
+          setInlineMessage($('#settings-message'), 'Konfigurasi siap. Login petugas akan memverifikasi project dan hak akses.', 'info');
+        }
+      } catch (error) {
+        console.error('Gagal menyiapkan Supabase Auth:', error);
+        setConnectionStatus('error', 'Koneksi gagal');
+        setRealtimeStatus('error', 'Realtime tidak tersedia');
+        setInlineMessage($('#settings-message'), `${error?.message || 'Tidak dapat memeriksa sesi Supabase.'} Periksa URL, key, Auth, dan konfigurasi project.`, 'error');
+        throw error;
+      }
+    }
+
+    async function signInStaff(event) {
+      event.preventDefault();
+      if (!state.client) {
+        setInlineMessage($('#login-message'), 'Hubungkan project Supabase terlebih dahulu.', 'error');
+        return;
+      }
+      state.loginInProgress = true;
+      updateReadyControls();
+      const button = $('#staff-login-button');
+      button.innerHTML = '<i class="fa-solid fa-spinner fa-spin" aria-hidden="true"></i>Memverifikasi…';
+      try {
+        const { data, error } = await state.client.auth.signInWithPassword({
+          email: $('#staff-email').value.trim(),
+          password: $('#staff-password').value
+        });
+        if (error) throw error;
+        $('#staff-password').value = '';
+        $('#login-message').hidden = true;
+        await activateStaffSession(state.client, data.session);
+      } catch (error) {
+        console.error('Login petugas gagal:', error);
+        setInlineMessage($('#login-message'), error?.message || 'Login gagal. Periksa email dan kata sandi.', 'error');
+      } finally {
+        state.loginInProgress = false;
+        button.innerHTML = '<i class="fa-solid fa-right-to-bracket" aria-hidden="true"></i>Masuk sebagai petugas';
+        updateAuthControls();
+      }
+    }
+
+    async function signOutStaff() {
+      if (!state.client) return;
+      const client = state.client;
+      try {
+        await client.auth.signOut({ scope: 'local' });
+      } catch (error) {
+        console.error('Gagal mengakhiri sesi:', error);
+      }
+      await deactivateStaffSession(client);
+      showToast('Sesi diakhiri', 'Petugas sudah keluar dan data wajah dibersihkan dari memori halaman.', 'info');
+    }
+
+    async function loadModels() {
+      setModelStatus('loading', 'Memuat model…');
+      try {
+        const faceapi = window.faceapi;
+        if (!faceapi?.nets?.tinyFaceDetector) throw new Error('Library face-api.js tidak termuat. Periksa koneksi internet atau pemblokir konten.');
+        await Promise.all([
+          faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL),
+          faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL),
+          faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL)
+        ]);
+        state.modelsReady = true;
+        setModelStatus('online', 'Model siap');
+        rebuildMatcher();
+        updateReadyControls();
+      } catch (error) {
+        console.error('Gagal memuat model wajah:', error);
+        state.modelsReady = false;
+        setModelStatus('error', 'Model gagal dimuat');
+        updateReadyControls();
+        showToast('Model wajah belum tersedia', error?.message || 'Periksa koneksi internet, lalu muat ulang halaman.', 'error');
+      }
+    }
+
+    async function connectFromForm(event) {
+      event.preventDefault();
+      const url = $('#supabase-url').value.trim().replace(/\/$/, '');
+      const key = $('#supabase-key').value.trim();
+      if (!url || !key) {
+        setInlineMessage($('#settings-message'), 'URL Supabase dan anon/publishable key wajib diisi.', 'error');
+        return;
+      }
+      try {
+        new URL(url);
+      } catch {
+        setInlineMessage($('#settings-message'), 'Format URL tidak valid. Gunakan URL project Supabase, misalnya https://xxxx.supabase.co.', 'error');
+        return;
+      }
+      try {
+        window.localStorage.setItem(CONFIG_KEY, JSON.stringify({ url, key }));
+      } catch (error) {
+        console.warn('Gagal menyimpan konfigurasi lokal:', error);
+        setInlineMessage($('#settings-message'), 'Browser tidak mengizinkan LocalStorage. Koneksi akan dicoba untuk sesi ini saja.', 'warning');
+      }
+      try {
+        await connectSupabase(url, key);
+        showToast('Konfigurasi tersimpan', 'Masuk dengan akun petugas sekolah untuk memverifikasi koneksi.', 'info');
+      } catch (error) {
+        // Pesan yang lebih spesifik sudah ditampilkan pada formulir.
+      }
+    }
+
+    function normalizeError(error) {
+      if (error?.name === 'NotAllowedError' || error?.name === 'PermissionDeniedError') return 'Izin kamera ditolak. Izinkan akses kamera dari pengaturan browser.';
+      if (error?.name === 'NotFoundError' || error?.name === 'DevicesNotFoundError') return 'Kamera tidak ditemukan. Sambungkan webcam atau pilih perangkat lain.';
+      if (error?.name === 'NotReadableError' || error?.name === 'TrackStartError') return 'Kamera sedang digunakan aplikasi lain atau tidak dapat dibuka.';
+      if (!window.isSecureContext) return 'Webcam hanya dapat digunakan melalui HTTPS atau localhost.';
+      return error?.message || 'Tidak dapat mengakses kamera.';
+    }
+
+    async function refreshCameraList(preferredId = '') {
+      const select = $('#camera-select');
+      const current = preferredId || select.value;
+      if (!navigator.mediaDevices?.enumerateDevices) {
+        select.replaceChildren(new Option('Kamera tidak didukung browser', ''));
+        return;
+      }
+      try {
+        const devices = await navigator.mediaDevices.enumerateDevices();
+        const cameras = devices.filter((device) => device.kind === 'videoinput');
+        select.replaceChildren();
+        if (!cameras.length) {
+          select.append(new Option('Kamera default (izin diperlukan)', ''));
+          return;
+        }
+        cameras.forEach((camera, index) => {
+          const option = document.createElement('option');
+          option.value = camera.deviceId;
+          option.textContent = camera.label || `Kamera ${index + 1}`;
+          select.append(option);
+        });
+        if (current && cameras.some((camera) => camera.deviceId === current)) select.value = current;
+      } catch (error) {
+        console.warn('Gagal membaca daftar kamera:', error);
+      }
+    }
+
+    function setCameraLabel(text) {
+      $('#camera-status').textContent = text;
+    }
+
+    async function stopAttendanceCamera() {
+      state.scanning = false;
+      window.clearTimeout(state.scanTimer);
+      state.scanTimer = null;
+      state.pendingCandidate = null;
+      if ($('#match-notice')) $('#match-notice').hidden = true;
+      if (state.cameraStream) state.cameraStream.getTracks().forEach((track) => track.stop());
+      state.cameraStream = null;
+      const video = $('#attendance-video');
+      video.pause();
+      video.srcObject = null;
+      video.hidden = true;
+      $('#face-overlay').hidden = true;
+      $('#camera-placeholder').hidden = false;
+      $('#scan-indicator').classList.add('hidden');
+      $('#scan-indicator').classList.remove('inline-flex');
+      $('#scan-state-label').textContent = 'Menunggu kamera';
+      setCameraLabel('Kamera belum aktif');
+      updateReadyControls();
+    }
+
+    async function startAttendanceCamera() {
+      if (!state.modelsReady || !isStaffReady() || !state.matcher) {
+        showToast('Belum siap memindai', 'Masuk sebagai petugas, muat model, dan pastikan kelas memiliki template wajah berizin. Siswa tetap dapat dicatat manual.', 'info');
+        return;
+      }
+      if (!navigator.mediaDevices?.getUserMedia) {
+        showToast('Webcam tidak tersedia', 'Gunakan browser modern melalui HTTPS atau localhost.', 'error');
+        return;
+      }
+      await stopEnrollmentCamera();
+      await stopAttendanceCamera();
+      try {
+        const selectedId = $('#camera-select').value;
+        const videoConstraint = selectedId
+          ? { deviceId: { exact: selectedId }, width: { ideal: 1280 }, height: { ideal: 720 } }
+          : { facingMode: 'user', width: { ideal: 1280 }, height: { ideal: 720 } };
+        const stream = await navigator.mediaDevices.getUserMedia({ video: videoConstraint, audio: false });
+        state.cameraStream = stream;
+        const video = $('#attendance-video');
+        video.srcObject = stream;
+        video.hidden = false;
+        $('#camera-placeholder').hidden = true;
+        await new Promise((resolve, reject) => {
+          if (video.readyState >= 1 && video.videoWidth) return resolve();
+          const onLoaded = () => { cleanup(); resolve(); };
+          const onError = () => { cleanup(); reject(new Error('Video webcam tidak dapat dimulai.')); };
+          const cleanup = () => {
+            video.removeEventListener('loadedmetadata', onLoaded);
+            video.removeEventListener('error', onError);
+          };
+          video.addEventListener('loadedmetadata', onLoaded, { once: true });
+          video.addEventListener('error', onError, { once: true });
+        });
+        await video.play();
+        const stage = $('#camera-stage');
+        if (video.videoWidth && video.videoHeight) stage.style.aspectRatio = `${video.videoWidth} / ${video.videoHeight}`;
+        await refreshCameraList(stream.getVideoTracks()[0]?.getSettings()?.deviceId || selectedId);
+        state.scanning = true;
+        $('#scan-indicator').classList.remove('hidden');
+        $('#scan-indicator').classList.add('inline-flex');
+        setCameraLabel('Kamera aktif · pemindaian setiap 450 ms');
+        $('#scan-state-label').textContent = 'Mencari wajah…';
+        updateReadyControls();
+        scanFrame();
+      } catch (error) {
+        await stopAttendanceCamera();
+        const message = normalizeError(error);
+        setCameraLabel('Gagal mengaktifkan kamera');
+        showToast('Kamera tidak dapat dibuka', message, 'error');
+      }
+    }
+
+    function drawDetections(detections) {
+      const video = $('#attendance-video');
+      const canvas = $('#face-overlay');
+      if (!video.videoWidth || !video.videoHeight) return;
+      if (canvas.width !== video.videoWidth || canvas.height !== video.videoHeight) {
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+      }
+      canvas.hidden = false;
+      const context = canvas.getContext('2d');
+      context.clearRect(0, 0, canvas.width, canvas.height);
+      const scale = Math.max(1, canvas.width / 720);
+      context.font = `700 ${Math.round(14 * scale)}px DM Sans, sans-serif`;
+      context.textBaseline = 'middle';
+      detections.forEach((detection) => {
+        const best = state.matcher?.findBestMatch(detection.descriptor);
+        const student = best && best.label !== 'unknown' ? state.studentsById.get(String(best.label)) : null;
+        const box = detection.detection.box;
+        const label = student ? student.name : 'Wajah belum dikenal';
+        const color = student ? '#34d399' : '#fbbf24';
+        context.lineWidth = Math.max(2, scale * 2);
+        context.strokeStyle = color;
+        context.strokeRect(box.x, box.y, box.width, box.height);
+        const labelHeight = 27 * scale;
+        const labelWidth = Math.min(canvas.width - box.x, context.measureText(label).width + 18 * scale);
+        const labelY = Math.max(0, box.y - labelHeight);
+        context.fillStyle = student ? 'rgba(6, 78, 59, .94)' : 'rgba(120, 53, 15, .94)';
+        context.fillRect(box.x, labelY, labelWidth, labelHeight);
+        context.fillStyle = '#ffffff';
+        context.fillText(label, box.x + 9 * scale, labelY + labelHeight / 2, Math.max(10, labelWidth - 12 * scale));
+      });
+      return detections;
+    }
+
+    async function scanFrame() {
+      if (!state.scanning) return;
+      try {
+        const video = $('#attendance-video');
+        if (video.readyState >= 2 && state.modelsReady) {
+          const faceapi = window.faceapi;
+          const detections = await faceapi.detectAllFaces(video, new faceapi.TinyFaceDetectorOptions({ inputSize: 320, scoreThreshold: 0.45 }))
+            .withFaceLandmarks()
+            .withFaceDescriptors();
+          drawDetections(detections);
+          $('#scan-state-label').textContent = detections.length > 1
+            ? 'Pindai satu siswa pada satu waktu'
+            : detections.length === 1 ? 'Periksa kecocokan wajah' : 'Mencari wajah…';
+          if (state.matcher && detections.length === 1) {
+            const match = state.matcher.findBestMatch(detections[0].descriptor);
+            if (match.label !== 'unknown') {
+              const student = state.studentsById.get(String(match.label));
+              if (student) queueAttendanceCandidate(student);
+            }
+          }
+        }
+      } catch (error) {
+        console.warn('Frame deteksi dilewati:', error);
+        $('#scan-state-label').textContent = 'Deteksi akan dicoba ulang…';
+      }
+      if (state.scanning) state.scanTimer = window.setTimeout(scanFrame, 450);
+    }
+
+    async function recordAttendance(student, method = 'Wajah') {
+      const studentId = String(student.id);
+      if (!isStaffReady() || state.pendingAttendance.has(studentId)) return;
+      if (state.attendances.has(studentId)) {
+        if (state.pendingCandidate?.id === student.id) state.pendingCandidate = null;
+        showCameraNotice(student.name, 'Presensi siswa ini sudah tercatat hari ini.', 'info');
+        return;
+      }
+      const client = state.client;
+      state.pendingAttendance.add(studentId);
+      if (method === 'Wajah') $('#confirm-attendance').disabled = true;
+      try {
+        const { data, error } = await client.from('attendances').insert({
+          student_id: student.id,
+          method
+        }).select('id, student_id, class_name, date, time, status, method').single();
+        if (client !== state.client) return;
+        if (error) {
+          if (error.code === '23505') {
+            await refreshAttendanceOnly();
+            state.pendingCandidate = null;
+            showCameraNotice(student.name, 'Presensi siswa ini sudah tercatat hari ini.', 'info');
+            return;
+          }
+          throw error;
+        }
+        mergeAttendance(data);
+        state.pendingCandidate = null;
+        showCameraNotice(student.name, `Presensi ${method === 'Manual' ? 'manual' : 'terverifikasi'} berhasil · ${String(data.time || '').slice(0, 5)}`, 'success');
+        showToast('Presensi berhasil', `${student.name} tercatat hadir di kelas ${data.class_name}.`, 'success');
+        playConfirmationTone();
+      } catch (error) {
+        console.error('Gagal menyimpan kehadiran:', error);
+        if (method === 'Wajah' && state.pendingCandidate?.id === student.id) {
+          showCameraNotice(student.name, 'Simpan gagal. Periksa koneksi/policy lalu konfirmasi ulang.', 'candidate');
+        }
+        showToast('Presensi belum tersimpan', error?.message || 'Periksa koneksi dan policy Supabase.', 'error');
+      } finally {
+        state.pendingAttendance.delete(studentId);
+        $('#confirm-attendance').disabled = false;
+      }
+    }
+
+    function playConfirmationTone() {
+      try {
+        const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+        if (!AudioContextClass) return;
+        const audio = new AudioContextClass();
+        const oscillator = audio.createOscillator();
+        const gain = audio.createGain();
+        oscillator.type = 'sine';
+        oscillator.frequency.setValueAtTime(880, audio.currentTime);
+        oscillator.frequency.setValueAtTime(1175, audio.currentTime + 0.09);
+        gain.gain.setValueAtTime(0.0001, audio.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.12, audio.currentTime + 0.02);
+        gain.gain.exponentialRampToValueAtTime(0.0001, audio.currentTime + 0.24);
+        oscillator.connect(gain);
+        gain.connect(audio.destination);
+        oscillator.start();
+        oscillator.stop(audio.currentTime + 0.25);
+        oscillator.onended = () => { void audio.close(); };
+      } catch (error) {
+        console.info('Audio konfirmasi tidak tersedia:', error);
+      }
+    }
+
+    function updateEnrollmentMode() {
+      const manualOnly = $('#manual-only').checked;
+      $('#photo-enrollment-card').hidden = manualOnly;
+      $('#consent-wrap').hidden = manualOnly;
+      $('#consent-check').required = !manualOnly;
+      if (manualOnly) {
+        void stopEnrollmentCamera();
+        clearSelectedPhoto();
+      }
+      updateReadyControls();
+    }
+
+    function clearSelectedPhoto() {
+      state.selectedPhoto = null;
+      if (state.previewUrl) URL.revokeObjectURL(state.previewUrl);
+      state.previewUrl = null;
+      $('#photo-preview').removeAttribute('src');
+      $('#photo-preview').hidden = true;
+      $('#photo-placeholder').hidden = false;
+      $('#student-photo').value = '';
+    }
+
+    function setSelectedPhoto(file) {
+      if (!file || !['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
+        setInlineMessage($('#enrollment-status'), 'Pilih foto JPG, PNG, atau WebP yang valid.', 'error');
+        return;
+      }
+      if (file.size > PHOTO_MAX_BYTES) {
+        setInlineMessage($('#enrollment-status'), 'Ukuran foto melebihi batas 5 MB. Kompres foto atau pilih foto lain.', 'error');
+        return;
+      }
+      if (state.previewUrl) URL.revokeObjectURL(state.previewUrl);
+      state.selectedPhoto = file;
+      state.previewUrl = URL.createObjectURL(file);
+      $('#photo-preview').src = state.previewUrl;
+      $('#photo-preview').hidden = false;
+      $('#photo-placeholder').hidden = true;
+      $('#enroll-video').hidden = true;
+      $('#enrollment-status').hidden = true;
+    }
+
+    async function startEnrollmentCamera() {
+      if (!navigator.mediaDevices?.getUserMedia) {
+        showToast('Webcam tidak tersedia', 'Gunakan browser modern melalui HTTPS atau localhost.', 'error');
+        return;
+      }
+      await stopAttendanceCamera();
+      await stopEnrollmentCamera();
+      clearSelectedPhoto();
+      try {
+        state.enrollStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user', width: { ideal: 1280 }, height: { ideal: 720 } }, audio: false });
+        const video = $('#enroll-video');
+        video.srcObject = state.enrollStream;
+        video.hidden = false;
+        $('#photo-placeholder').hidden = true;
+        await video.play();
+        $('#choose-photo').classList.add('hidden');
+        $('#open-enroll-camera').classList.add('hidden');
+        $('#capture-photo').classList.remove('hidden');
+        $('#capture-photo').classList.add('flex');
+        $('#close-enroll-camera').classList.remove('hidden');
+        $('#close-enroll-camera').classList.add('flex');
+      } catch (error) {
+        await stopEnrollmentCamera();
+        showToast('Kamera tidak dapat dibuka', normalizeError(error), 'error');
+      }
+    }
+
+    async function stopEnrollmentCamera() {
+      if (state.enrollStream) state.enrollStream.getTracks().forEach((track) => track.stop());
+      state.enrollStream = null;
+      const video = $('#enroll-video');
+      if (video) {
+        video.pause();
+        video.srcObject = null;
+        video.hidden = true;
+      }
+      const chooseButton = $('#choose-photo');
+      const openButton = $('#open-enroll-camera');
+      if (chooseButton && openButton) {
+        chooseButton.classList.remove('hidden');
+        openButton.classList.remove('hidden');
+        $('#capture-photo').classList.add('hidden');
+        $('#capture-photo').classList.remove('flex');
+        $('#close-enroll-camera').classList.add('hidden');
+        $('#close-enroll-camera').classList.remove('flex');
+      }
+      if (!state.selectedPhoto && $('#photo-placeholder')) $('#photo-placeholder').hidden = false;
+      if (state.selectedPhoto && $('#photo-preview')) $('#photo-preview').hidden = false;
+    }
+
+    async function captureEnrollmentPhoto() {
+      const video = $('#enroll-video');
+      if (!state.enrollStream || !video.videoWidth) return;
+      const canvas = document.createElement('canvas');
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      canvas.getContext('2d').drawImage(video, 0, 0, canvas.width, canvas.height);
+      const blob = await new Promise((resolve) => canvas.toBlob(resolve, 'image/jpeg', 0.92));
+      if (!blob) {
+        showToast('Foto gagal diambil', 'Coba ambil foto sekali lagi.', 'error');
+        return;
+      }
+      await stopEnrollmentCamera();
+      setSelectedPhoto(new File([blob], `foto-siswa-${Date.now()}.jpg`, { type: 'image/jpeg' }));
+    }
+
+    async function loadImage(blob) {
+      const url = URL.createObjectURL(blob);
+      const image = new Image();
+      image.src = url;
+      try {
+        await image.decode();
+        return { image, release: () => URL.revokeObjectURL(url) };
+      } catch (error) {
+        URL.revokeObjectURL(url);
+        throw new Error('Foto tidak dapat dibaca. Gunakan JPG, PNG, atau WebP.');
+      }
+    }
+
+    async function uploadStudentPhoto(client, photo) {
+      const type = photo.type || 'image/jpeg';
+      const extension = type === 'image/png' ? 'png' : type === 'image/webp' ? 'webp' : 'jpg';
+      const userId = state.session?.user?.id;
+      if (!userId) throw new Error('Sesi petugas sudah berakhir. Login ulang sebelum mengunggah foto.');
+      const randomPart = window.crypto?.randomUUID ? window.crypto.randomUUID() : `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+      const path = `${userId}/${randomPart}.${extension}`;
+      const { error } = await client.storage.from(PHOTO_BUCKET).upload(path, photo, {
+        cacheControl: '3600',
+        contentType: type,
+        upsert: false
+      });
+      if (error) throw new Error(`Foto gagal diunggah ke Storage privat: ${error.message}. Periksa bucket ${PHOTO_BUCKET} dan policy petugas.`);
+      return path;
+    }
+
+    async function submitEnrollment(event) {
+      event.preventDefault();
+      if (state.enrolling) return;
+      if (!isStaffReady()) {
+        setInlineMessage($('#enrollment-status'), 'Login sebagai petugas yang diotorisasi sebelum mendaftarkan roster.', 'error');
+        return;
+      }
+      const manualOnly = $('#manual-only').checked;
+      if (!manualOnly && !state.modelsReady) {
+        setInlineMessage($('#enrollment-status'), 'Model wajah belum siap. Tunggu model selesai dimuat atau pilih mode manual tanpa biometrik.', 'error');
+        return;
+      }
+      const nisn = $('#student-nisn').value.trim();
+      const name = $('#student-name').value.trim();
+      const className = $('#student-class').value.trim();
+      const photo = state.selectedPhoto;
+      if (!nisn || !name || !className) {
+        setInlineMessage($('#enrollment-status'), 'NISN, nama lengkap, dan kelas wajib diisi.', 'error');
+        return;
+      }
+      if (!manualOnly && !photo) {
+        setInlineMessage($('#enrollment-status'), 'Unggah atau ambil foto wajah siswa terlebih dahulu.', 'error');
+        return;
+      }
+      if (!manualOnly && !$('#consent-check').checked) {
+        setInlineMessage($('#enrollment-status'), 'Jangan merekam biometrik tanpa memastikan persetujuan orang tua/wali terdokumentasi. Pilih mode manual bila belum ada.', 'error');
+        return;
+      }
+      if (state.students.some((student) => student.nisn.toLowerCase() === nisn.toLowerCase())) {
+        setInlineMessage($('#enrollment-status'), `NISN ${nisn} sudah terdaftar. Periksa kembali data siswa.`, 'error');
+        return;
+      }
+
+      state.enrolling = true;
+      updateReadyControls();
+      const submitButton = $('#enroll-submit');
+      submitButton.innerHTML = '<i class="fa-solid fa-spinner fa-spin" aria-hidden="true"></i><span>Menganalisis &amp; menyimpan…</span>';
+      setInlineMessage($('#enrollment-status'), manualOnly ? 'Menyimpan roster tanpa foto atau descriptor wajah…' : 'Menganalisis foto, membuat template, lalu menyimpan ke area privat…', 'info');
+      let loadedImage;
+      let descriptor = null;
+      let uploadedPath = null;
+      let studentCreated = false;
+      const client = state.client;
+      try {
+        let rawStudent;
+        if (manualOnly) {
+          const { data, error } = await client.from('students').insert({
+            nisn, name, class_name: className, consent_confirmed: false, photo_url: null
+          }).select('id, nisn, name, class_name, photo_url, consent_confirmed, created_at').single();
+          if (error) {
+            if (error.code === '23505') throw new Error(`NISN ${nisn} sudah digunakan oleh siswa lain.`);
+            throw error;
+          }
+          rawStudent = data;
+          studentCreated = true;
+        } else {
+          loadedImage = await loadImage(photo);
+          const faceapi = window.faceapi;
+          const faceResults = await faceapi.detectAllFaces(loadedImage.image, new faceapi.TinyFaceDetectorOptions({ inputSize: 416, scoreThreshold: 0.4 }))
+            .withFaceLandmarks()
+            .withFaceDescriptors();
+          if (faceResults.length !== 1) {
+            throw new Error(faceResults.length ? 'Foto harus menampilkan tepat satu wajah. Gunakan foto individual, bukan foto kelompok.' : 'Wajah tidak terdeteksi. Gunakan foto yang terang dan menghadap depan.');
+          }
+          descriptor = Array.from(faceResults[0].descriptor, (value) => Number(value));
+          if (!hasValidDescriptor(descriptor)) throw new Error('Template wajah tidak valid. Pilih foto lain.');
+          uploadedPath = await uploadStudentPhoto(client, photo);
+          const { data: studentId, error: rpcError } = await client.rpc('register_student_with_face', {
+            p_nisn: nisn,
+            p_name: name,
+            p_class_name: className,
+            p_face_descriptor: descriptor,
+            p_photo_path: uploadedPath
+          });
+          if (rpcError) {
+            if (rpcError.code === '23505') throw new Error(`NISN ${nisn} sudah digunakan oleh siswa lain.`);
+            throw rpcError;
+          }
+          studentCreated = true;
+          const { data, error } = await client.from('students')
+            .select('id, nisn, name, class_name, photo_url, consent_confirmed, created_at')
+            .eq('id', studentId)
+            .single();
+          if (error) throw error;
+          rawStudent = data;
+        }
+        if (client !== state.client) return;
+        const newStudent = normalizeStudent({ ...rawStudent, face_descriptor: descriptor });
+        applyStudents([...state.students, newStudent]);
+        $('#student-form').reset();
+        clearSelectedPhoto();
+        updateEnrollmentMode();
+        $('#enrollment-status').hidden = true;
+        showToast(manualOnly ? 'Roster berhasil ditambahkan' : 'Siswa berhasil didaftarkan', manualOnly ? `${name} dapat dicatat hadir secara manual.` : `${name} siap sebagai kandidat; kehadiran harus dikonfirmasi petugas.`, 'success');
+      } catch (error) {
+        console.error('Pendaftaran gagal:', error);
+        if (uploadedPath && !studentCreated && client === state.client) {
+          try { await client.storage.from(PHOTO_BUCKET).remove([uploadedPath]); } catch (cleanupError) { console.warn('Foto upload perlu dibersihkan manual:', cleanupError); }
+        }
+        setInlineMessage($('#enrollment-status'), error?.message || 'Pendaftaran gagal. Periksa koneksi, consent, dan policy Supabase.', 'error');
+      } finally {
+        loadedImage?.release();
+        state.enrolling = false;
+        submitButton.innerHTML = '<i class="fa-solid fa-user-check" aria-hidden="true"></i><span>Simpan pendaftaran</span>';
+        updateReadyControls();
+      }
+    }
+
+    async function clearConfiguration() {
+      try { window.localStorage.removeItem(CONFIG_KEY); } catch (error) { console.warn('LocalStorage tidak tersedia:', error); }
+      const client = state.client;
+      await stopAttendanceCamera();
+      await stopEnrollmentCamera();
+      clearSelectedPhoto();
+      $('#student-form').reset();
+      updateEnrollmentMode();
+      if (client) {
+        try { await client.auth.signOut({ scope: 'local' }); } catch (error) { console.warn('Gagal mengakhiri sesi Auth:', error); }
+      }
+      await removeCurrentChannel();
+      await removeAuthListener();
+      state.client = null;
+      state.session = null;
+      state.staff = null;
+      state.authActivationToken = null;
+      state.authActivationPromise = null;
+      state.photoUrlCache.clear();
+      state.attendances = new Map();
+      state.pendingCandidate = null;
+      applyStudents([]);
+      $('#supabase-url').value = '';
+      $('#supabase-key').value = '';
+      $('#staff-email').value = '';
+      $('#staff-password').value = '';
+      $('#settings-message').hidden = true;
+      $('#login-message').hidden = true;
+      setConnectionStatus('idle', 'Belum dikonfigurasi');
+      setRealtimeStatus('idle', 'Realtime menunggu');
+      updateAuthControls();
+      showToast('Konfigurasi dihapus', 'Project URL, key, sesi login, dan data dalam memori halaman telah dibersihkan.', 'info');
+    }
+
+    function setActiveTab(tabName) {
+      document.querySelectorAll('[data-tab]').forEach((button) => {
+        button.setAttribute('aria-selected', String(button.dataset.tab === tabName));
+      });
+      document.querySelectorAll('[data-panel]').forEach((panel) => {
+        panel.hidden = panel.dataset.panel !== tabName;
+      });
+      if (tabName !== 'attendance') void stopAttendanceCamera();
+      if (tabName !== 'enrollment') void stopEnrollmentCamera();
+    }
+
+    function bindEvents() {
+      document.querySelectorAll('[data-tab]').forEach((button) => {
+        button.addEventListener('click', () => setActiveTab(button.dataset.tab));
+      });
+      $('#settings-form').addEventListener('submit', connectFromForm);
+      $('#staff-login-form').addEventListener('submit', signInStaff);
+      $('#staff-logout-button').addEventListener('click', signOutStaff);
+      $('#clear-settings').addEventListener('click', clearConfiguration);
+      $('#manual-only').addEventListener('change', updateEnrollmentMode);
+      $('#confirm-attendance').addEventListener('click', () => {
+        const candidate = state.pendingCandidate;
+        if (candidate) void recordAttendance(candidate, 'Wajah');
+      });
+      $('#dismiss-candidate').addEventListener('click', dismissCandidate);
+      $('#toggle-key').addEventListener('click', () => {
+        const input = $('#supabase-key');
+        const visible = input.type === 'password';
+        input.type = visible ? 'text' : 'password';
+        $('#toggle-key').textContent = visible ? 'Sembunyikan' : 'Tampilkan';
+      });
+      $('#class-filter').addEventListener('change', (event) => {
+        state.selectedClass = event.target.value || ALL_CLASSES;
+        rebuildMatcher();
+        renderAttendance();
+      });
+      $('#refresh-data').addEventListener('click', async () => {
+        if (!isStaffReady()) {
+          showToast('Login petugas diperlukan', 'Hubungkan Supabase lalu masuk dengan akun yang sudah diotorisasi.', 'info');
+          return;
+        }
+        const button = $('#refresh-data');
+        const client = state.client;
+        button.disabled = true;
+        try {
+          const [students, attendances] = await Promise.all([loadAllStudents(client), loadTodayAttendances(client)]);
+          if (client !== state.client || !isStaffReady()) return;
+          applyStudents(students);
+          state.attendances = new Map(attendances.map((row) => [String(row.student_id), row]));
+          renderAttendance();
+          showToast('Data diperbarui', 'Roster dan kehadiran hari ini sudah terbaru.', 'success');
+        } catch (error) {
+          showToast('Gagal memuat data', error?.message || 'Periksa koneksi Supabase.', 'error');
+        } finally {
+          button.disabled = false;
+        }
+      });
+      $('#refresh-cameras').addEventListener('click', () => refreshCameraList());
+      $('#start-camera').addEventListener('click', startAttendanceCamera);
+      $('#stop-camera').addEventListener('click', stopAttendanceCamera);
+      $('#choose-photo').addEventListener('click', () => $('#student-photo').click());
+      $('#student-photo').addEventListener('change', (event) => {
+        const file = event.target.files?.[0];
+        if (file) setSelectedPhoto(file);
+      });
+      $('#open-enroll-camera').addEventListener('click', startEnrollmentCamera);
+      $('#capture-photo').addEventListener('click', captureEnrollmentPhoto);
+      $('#close-enroll-camera').addEventListener('click', stopEnrollmentCamera);
+      $('#student-form').addEventListener('submit', submitEnrollment);
+      $('#toast-close').addEventListener('click', () => $('#toast').classList.add('hidden'));
+      if (navigator.mediaDevices?.addEventListener) navigator.mediaDevices.addEventListener('devicechange', () => refreshCameraList());
+    }
+
+    async function init() {
+      updateHeaderDate();
+      bindEvents();
+      updateAuthControls();
+      updateEnrollmentMode();
+      renderAttendance();
+      await refreshCameraList();
+      const saved = safeGetConfig();
+      if (saved) {
+        $('#supabase-url').value = saved.url;
+        $('#supabase-key').value = saved.key;
+      } else {
+        setConnectionStatus('idle', 'Belum dikonfigurasi');
+        setRealtimeStatus('idle', 'Realtime menunggu');
+      }
+      // Model dan data dimuat paralel agar halaman tetap responsif saat CDN/Supabase lambat.
+      const tasks = [loadModels()];
+      if (saved) {
+        tasks.push(connectSupabase(saved.url, saved.key).catch((error) => {
+          console.error('Koneksi konfigurasi tersimpan gagal:', error);
+        }));
+      }
+      await Promise.allSettled(tasks);
+    }
+
+    void init();
+  </script>
+</body>
+</html>
